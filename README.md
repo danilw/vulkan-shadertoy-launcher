@@ -1,2 +1,7 @@
 # vulkan-shadertoy-launcher
-using C, no external dependencies
+
+soon...
+
+base on [https://github.com/danilw/vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
+
+
