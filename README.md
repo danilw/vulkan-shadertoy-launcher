@@ -91,6 +91,6 @@ x86_64-w64-mingw32-gcc -DVK_USE_PLATFORM_WIN32_KHR -O2 -s -lm -mwindows ../vk_ut
 
 **Images:** 
 
-![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/v2/scr1.jpg)
+![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/img.png)
 
 
