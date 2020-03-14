@@ -10,7 +10,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 **Bin builds** contain two examples , used shaders for examples *example 1* [shadertoy link](https://www.shadertoy.com/view/wlX3zn), *example 2* [shadertoy link](https://www.shadertoy.com/view/MstGWX)
 
-Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/v2/Vulkan_shader_launcher_examples.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/v2/Vulkan_shader_launcher_examples_linux.zip)**
+Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/)**
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
