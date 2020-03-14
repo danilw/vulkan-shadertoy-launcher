@@ -21,7 +21,23 @@ ___
 
 2. open any shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
-3. Small setup. If you do not need use buffers, simple code to 
+3. Small setup. If you do not need use buffers, can be used simpel dummy code for unused buffers 
+```
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    discard;
+}
+```
+*shadertoy textures* can be found on [Shadertoy Unofficial](https://shadertoyunofficial.wordpress.com/2019/07/23/shadertoy-media-files/)
+
+**binding rules:** look files `shaders/src/*.frag` example:
+```
+#define iChannel0 iChannels[0]
+#define iChannel1 iChannels[1]
+#define iChannel2 iChannels[2]
+#define iChannel3 iChannels[3]
+```
+change in any order you need
 
 4. compile shaders to `*.spv` format using *glslangValidator* command list in file [build_shaders.sh](https://github.com/danilw/vulkan-shadertoy-launcher/blob/master/launcher/shaders/build_shaders.sh)
 
