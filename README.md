@@ -2,6 +2,8 @@
 
 base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
+# BUGGED right now(validation errors), fixin few errors
+
 **what is it** laucnher for **shadertoy shaders** in Vulkan. Read **how to use**, support features and limitations below.
 
 **Dependencies** - only vulkan library(sdk), and win32/X11 for window and keyboard/mouse control.
@@ -30,14 +32,14 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 ```
 *shadertoy textures* can be found on [Shadertoy Unofficial](https://shadertoyunofficial.wordpress.com/2019/07/23/shadertoy-media-files/)
 
-**binding rules:** look files `shaders/src/*.frag` example:
+**binding rules/order:** look files `shaders/src/*.frag` example:
 ```
 #define iChannel0 iChannels[0]
 #define iChannel1 iChannels[1]
 #define iChannel2 iChannels[2]
 #define iChannel3 iChannels[3]
 ```
-change in any order you need, `iTextures` is images from `*.png` files.
+change in any order you need, `iTextures` is images from `*.png` files. Default order \<0-4\> by file name.
 
 **textures** names in `textures/` folder \<1-4\>.png files
 
