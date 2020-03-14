@@ -50,7 +50,7 @@ ___
 
 1. **Textures** mipmaps enabled by default, edit in `main.c` option `USE_MIPMAPS`, all textures with VFlip to change remove `stbi_set_flip_vertically_on_load(true);`
 
-2. **Number of Buf and textures** can be configured in `main.c`, set `OFFSCREEN_BUFFERS` and `IMAGE_TEXTURES` to any number you need, after changing its values also edit `shaders/src/*.frag` files, same values there. *For each buffer and image **required** `*.spv` or `*.png` file in those folders.*
+2. **Number of Buf and textures** can be configured in `main.c`, set `OFFSCREEN_BUFFERS` and `IMAGE_TEXTURES` to any number you need, after changing its values also edit `shaders/src/*.frag` files, same values there. *For each buffer and image **required** its own `*.spv` or `*.png` file in those folders.*
 
 3. **Static resolution** uncomment `#define NO_RESIZE_BUF` in `main.c` to make buffers not resize on window resize.
 
