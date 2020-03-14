@@ -37,7 +37,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 #define iChannel2 iChannels[2]
 #define iChannel3 iChannels[3]
 ```
-change in any order you need
+change in any order you need, `iTextures` is images from `*.png` files.
 
 **textures** names in `textures/` folder \<1-4\>.png files
 
@@ -52,6 +52,8 @@ ___
 
 2. **Number of Buf and textures** can be configured in `main.c`, set `OFFSCREEN_BUFFERS` and `IMAGE_TEXTURES` to any number you need, after changing its values also edit `shaders/src/*.frag` files, there same values there.
 
+3. **Static resolution** uncomment `#define NO_RESIZE_BUF` in `main.c` to make buffers not resize on window resize.
+
 
 **Not supported right now**
 
@@ -59,7 +61,9 @@ ___
 
 2. Control only Mouse (same as on shadertoy), Keyboard not supported.\<TODO\>
 
-3. 
+3. Textures use only Linear or Mipmap filtering, Buffers only Linear filtering. to have `Nearest` fileter `texelFetch` in shaders can be used instead of `texture`.
+
+4. List of not implemented Uniforms - `iSampleRate` does not exist now, `iChannelTime` does not exist, `iFrameRate` does not exist, `iChannelResolution` use in shader [textureSize](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/textureSize.xhtml) instead. Everything else work same as on shadertoy.
 
 
 ___
