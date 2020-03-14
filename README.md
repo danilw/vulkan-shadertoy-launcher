@@ -17,7 +17,7 @@ Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launche
 ___
 ### How to use
 
-1. **Download** *Bin build* or build project you self. as example launcher name `VK_shadertoy_launcher.exe`
+1. **Download** *Bin build* or build project yourself. as example launcher name `VK_shadertoy_launcher.exe`
 
 2. **Open** any shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
