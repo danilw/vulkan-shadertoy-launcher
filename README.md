@@ -17,11 +17,11 @@ Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launche
 ___
 ### How to use
 
-1. download *Bin build* or build project you self. as example launcher name `VK_shadertoy_launcher.exe`
+1. **Download** *Bin build* or build project you self. as example launcher name `VK_shadertoy_launcher.exe`
 
-2. open any shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
+2. **Open** any shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
-3. Small setup. If you do not need use buffers, can be used simpel dummy code for unused buffers 
+3. **Small setup.** If you do not need use buffers, can be used simpel dummy code for unused buffers 
 ```
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
@@ -39,16 +39,27 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 ```
 change in any order you need
 
-4. compile shaders to `*.spv` format using *glslangValidator* command list in file [build_shaders.sh](https://github.com/danilw/vulkan-shadertoy-launcher/blob/master/launcher/shaders/build_shaders.sh)
+**textures** names in `textures/` folder \<1-4\>.png files
 
-4. launch `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
+4. **Compile shaders** to `*.spv` format using *glslangValidator* command list in file [build_shaders.sh](https://github.com/danilw/vulkan-shadertoy-launcher/blob/master/launcher/shaders/build_shaders.sh)
+
+4. **Launch** `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
 
 ___
-### Support features
+### Support features and extra
+
+1. **Textures** mipmaps enabled by default, edit in `main.c` option `USE_MIPMAPS`, all textures with VFlip to change remove `stbi_set_flip_vertically_on_load(true);`
+
+2. **Number of Buf and textures** can be configured in `main.c`, set `OFFSCREEN_BUFFERS` and `IMAGE_TEXTURES` to any number you need, after changing its values also edit `shaders/src/*.frag` files, there same values there.
 
 
 **Not supported right now**
 
+1. Only 2D textures(images), cubemaps, sound, and 3d textures not supported.\<TODO\>
+
+2. Control only Mouse (same as on shadertoy), Keyboard not supported.\<TODO\>
+
+3. 
 
 
 ___
