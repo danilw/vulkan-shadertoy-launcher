@@ -15,7 +15,7 @@ Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launche
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
 ___
-### How to use
+# How to use
 
 1. **Download** *Bin build* or build project yourself. as example launcher name `VK_shadertoy_launcher.exe`
 
@@ -46,7 +46,7 @@ change in any order you need, `iTextures` is images from `*.png` files.
 4. **Launch** `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
 
 ___
-### Support features and extra
+# Support features and extra
 
 1. **Textures** mipmaps enabled by default, edit in `main.c` option `USE_MIPMAPS`, all textures with VFlip to change remove `stbi_set_flip_vertically_on_load(true);`
 
