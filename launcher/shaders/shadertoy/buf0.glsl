@@ -1,4 +1,3 @@
-
 //using https://www.shadertoy.com/view/XsG3z1
 
 vec3 hash33(in vec2 p){ 
@@ -30,7 +29,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord ){
     uv = uv + lap*pw*3.0; 
     float newReactDiff = tx(uv).x + (noise.z - 0.5)*0.0025 - 0.002; 
 	newReactDiff += dot(tx(uv + (noise.xy-0.5)*pw).xy, vec2(1, -1))*0.145; 
-    if(iFrame>9) fragColor.xy = clamp(vec2(newReactDiff, avgReactDiff/.98), 0., 1.);
+    if((iFrame>9)&&(texelFetch(iChannel0,ivec2(iResolution.xy-1.),0).x>0.)) 
+        fragColor.xy = clamp(vec2(newReactDiff, avgReactDiff/.988), 0., 1.);
     else fragColor = vec4(noise, 1.);
     
 }
