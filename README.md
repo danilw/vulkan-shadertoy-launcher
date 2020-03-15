@@ -2,7 +2,7 @@
 
 base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
-**what is it** laucnher for **shadertoy shaders** in Vulkan. Read **how to use**, support features and limitations below.
+**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Read **how to use**, support features and limitations below.
 
 **Dependencies** - only vulkan library(sdk), and win32/X11 for window and keyboard/mouse control.
 
