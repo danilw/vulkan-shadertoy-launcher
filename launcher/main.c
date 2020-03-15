@@ -565,7 +565,7 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
         } else {
             use_one_VkQueue = true;
         }
-
+        
         if(use_one_VkQueue)
         {
             for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
@@ -788,18 +788,17 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
 #endif
     if((use_one_VkQueue)||(buffer_index==0)){
         vkResetCommandBuffer(cmd_buffer, 0);
+        VkCommandBufferBeginInfo begin_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        };
+        res = vkBeginCommandBuffer(cmd_buffer, &begin_info);
+        vk_error_set_vkresult(&retval, res);
+        if (res)
+        {
+            vk_error_printf(&retval, "BUF: Couldn't even begin recording a command buffer\n");
+            return false;
+        }
     }
-    VkCommandBufferBeginInfo begin_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    };
-    res = vkBeginCommandBuffer(cmd_buffer, &begin_info);
-    vk_error_set_vkresult(&retval, res);
-    if (res)
-    {
-        vk_error_printf(&retval, "BUF: Couldn't even begin recording a command buffer\n");
-        return false;
-    }
-
     VkImageMemoryBarrier image_barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT,
@@ -943,9 +942,9 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
                          0, NULL,
                          0, NULL,
                          1, &image_barrier);
-
+if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1))){
     vkEndCommandBuffer(cmd_buffer);
-
+}
     return true;
 }
 
@@ -964,7 +963,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
         }
         update_push_constants_window_size(os_window);
 
-        if(i==0) { //wait main screen
+        if(((i==0)&&(use_one_VkQueue))||(((!use_one_VkQueue)&&(i==OFFSCREEN_BUFFERS-1)))) { //wait main screen, or Queue all if only one VKQueue
             if (!first_submission)
             {
                 res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
@@ -997,7 +996,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
             vkQueueSubmit(offscreen_queue[i], 1, &submit_info, offscreen_fence);
             first_submission = false;
         }
-        else { //wait last buf/shader in loop
+        else if(use_one_VkQueue){ //wait last buf/shader in loop, if multi VkQueue supported
             res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
             vk_error_set_vkresult(&retval, res);
             if (res)
