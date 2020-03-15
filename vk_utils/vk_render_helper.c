@@ -469,7 +469,7 @@ vk_error vk_render_transition_images_mipmaps(struct vk_physical_device *phy_dev,
             0, NULL,
             1, &image_barrier);
 
-        VkImageBlit blit = {};
+        VkImageBlit blit = {0};
         blit.srcOffsets[0] = (struct VkOffset3D){.x=0, .y=0, .z=0};
         blit.srcOffsets[1] = (struct VkOffset3D){.x=mipWidth, .y=mipHeight, .z=1};
         blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
