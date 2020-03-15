@@ -942,9 +942,9 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
                          0, NULL,
                          0, NULL,
                          1, &image_barrier);
-if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1))){
-    vkEndCommandBuffer(cmd_buffer);
-}
+    if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1))){
+        vkEndCommandBuffer(cmd_buffer);
+    }
     return true;
 }
 
