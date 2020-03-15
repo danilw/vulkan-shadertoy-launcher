@@ -54,6 +54,8 @@ ___
 
 3. **Static resolution** uncomment `#define NO_RESIZE_BUF` in `main.c` to make buffers not resize on window resize.
 
+4. **Buffers format** all Buffers `VK_FORMAT_R32G32B32A32_SFLOAT` images `VK_FORMAT_R8G8B8A8_UNORM`, to change edit it in `main.c` code.
+
 *extra VkQueue* - used *1 VkQueue per buffer* when available, or *1 VkQueue* for everything.
 
 *extra CommandBuffer* - set `#define ONE_CMD` in `main.c`(line 10) to use only *2 CommandBuffers* for everything always, by default used *1 CommandBuffer* per VkQueue, or *all CommanBuffers in single VkQueue* when `VkQueue<Num of buffers`
