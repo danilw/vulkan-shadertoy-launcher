@@ -2,8 +2,6 @@
 
 base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
-# BUGGED right now(validation errors), fixin few errors
-
 **what is it** laucnher for **shadertoy shaders** in Vulkan. Read **how to use**, support features and limitations below.
 
 **Dependencies** - only vulkan library(sdk), and win32/X11 for window and keyboard/mouse control.
@@ -56,6 +54,7 @@ ___
 
 3. **Static resolution** uncomment `#define NO_RESIZE_BUF` in `main.c` to make buffers not resize on window resize.
 
+*extra* - used 1 VkQueue per buffer when available, or 1 VkQueue for everything. 
 
 **Not supported right now**
 
