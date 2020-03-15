@@ -6,6 +6,9 @@
 //define to not resize offscreen-buf on resize
 //#define NO_RESIZE_BUF
 
+//define to use one CommandBuffer for all offscreen rendering
+//#define ONE_CMD
+
 #if defined(VK_USE_PLATFORM_XCB_KHR)
 #include <unistd.h>
 #endif
@@ -556,6 +559,7 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
             return;
         }
 
+#if !defined(ONE_CMD)
         //check to use 1 cmd_buffer per Queues or 1 Queue for many cmd_buffers
         if (dev->command_pools[presentable_queues[0]].queue_count < 1+OFFSCREEN_BUFFERS)
         {
@@ -565,7 +569,7 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
         } else {
             use_one_VkQueue = true;
         }
-        
+#endif
         if(use_one_VkQueue)
         {
             for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
@@ -575,7 +579,11 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
         } else {
             for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
                 offscreen_queue[i] = dev->command_pools[presentable_queues[0]].queues[0];
+#if defined(ONE_CMD)
                 offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1];
+#else
+                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1+i];
+#endif
             }
         }
 
@@ -786,7 +794,10 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
 #ifdef NO_RESIZE_BUF
     update_push_constants_local_size(render_data->buf_obuffers[render_index+buffer_index*2].surface_size.width, render_data->buf_obuffers[render_index+buffer_index*2].surface_size.height);
 #endif
-    if((use_one_VkQueue)||(buffer_index==0)){
+#if defined(ONE_CMD)
+    if((use_one_VkQueue)||(buffer_index==0))
+#endif
+    {
         vkResetCommandBuffer(cmd_buffer, 0);
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -942,7 +953,10 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
                          0, NULL,
                          0, NULL,
                          1, &image_barrier);
-    if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1))){
+#if defined(ONE_CMD)
+    if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1)))
+#endif
+    {
         vkEndCommandBuffer(cmd_buffer);
     }
     return true;
@@ -963,7 +977,11 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
         }
         update_push_constants_window_size(os_window);
 
+#if defined(ONE_CMD)
         if(((i==0)&&(use_one_VkQueue))||(((!use_one_VkQueue)&&(i==OFFSCREEN_BUFFERS-1)))) { //wait main screen, or Queue all if only one VKQueue
+#else
+        if(i==0) { //wait main screen, or Queue all if only one VKQueue
+#endif
             if (!first_submission)
             {
                 res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
@@ -996,7 +1014,11 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
             vkQueueSubmit(offscreen_queue[i], 1, &submit_info, offscreen_fence);
             first_submission = false;
         }
-        else if(use_one_VkQueue){ //wait last buf/shader in loop, if multi VkQueue supported
+        else 
+#if defined(ONE_CMD)
+        if(use_one_VkQueue)
+#endif
+        { //wait last buf/shader in loop, if multi VkQueue supported
             res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
             vk_error_set_vkresult(&retval, res);
             if (res)
@@ -1330,7 +1352,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
         return retval;
     }
 
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //two cmd buffer
+#if defined(ONE_CMD)
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //1 main 1 offscreen cmd
+#else
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 1+OFFSCREEN_BUFFERS); //cmd buffers alloc
+#endif
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
@@ -1429,7 +1455,11 @@ int main(int argc, char **argv)
         return retval;
     }
 
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //two cmd buffer
+#if defined(ONE_CMD)
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //1 main 1 offscreen cmd
+#else
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 1+OFFSCREEN_BUFFERS); //cmd buffers alloc
+#endif
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
