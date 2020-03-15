@@ -101,7 +101,7 @@ struct vk_render_essentials essentials;
 
 VkFence offscreen_fence = VK_NULL_HANDLE;
 VkQueue offscreen_queue[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};
-bool use_one_VkQueue=false; //I check if more then 1 VK_QUEUE_GRAPHICS_BIT suported, then it set to true
+bool use_one_VkQueue=false; //I check if more then 1 VK_QUEUE_GRAPHICS_BIT suported, then it set to true <-!!!
 VkCommandBuffer offscreen_cmd_buffer[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};
 VkSemaphore wait_buf_sem = VK_NULL_HANDLE, wait_main_sem = VK_NULL_HANDLE;
 bool first_submission = true;
@@ -575,7 +575,7 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
         } else {
             for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
                 offscreen_queue[i] = dev->command_pools[presentable_queues[0]].queues[0];
-                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1+i];
+                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1];
             }
         }
 
@@ -786,7 +786,9 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
 #ifdef NO_RESIZE_BUF
     update_push_constants_local_size(render_data->buf_obuffers[render_index+buffer_index*2].surface_size.width, render_data->buf_obuffers[render_index+buffer_index*2].surface_size.height);
 #endif
-    vkResetCommandBuffer(cmd_buffer, 0);
+    if((use_one_VkQueue)||(buffer_index==0)){
+        vkResetCommandBuffer(cmd_buffer, 0);
+    }
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
