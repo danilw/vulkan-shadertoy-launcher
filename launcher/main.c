@@ -29,7 +29,7 @@
 
 //same numbers in <*.frag> files
 //number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
-//names shaders/spv/buf<X>.frag.spv X start from 1
+//names shaders/spv/<file>.spv look files names in that foldred
 #define OFFSCREEN_BUFFERS 4
 
 //number of images(>0)
