@@ -4,7 +4,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 **what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Read **how to use**, support features and limitations below.
 
-**Dependencies** - only vulkan library(sdk), and win32/X11 for window and keyboard/mouse control.
+**Dependencies** - only vulkan library(sdk), and win32/X11(xcb) for window and keyboard/mouse control.
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11)
 
@@ -13,6 +13,13 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_win.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_linux.zip)**
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
+
+___
+TODO:
+1. keyboard support
+2. sound and 3d textures support, and mimpap for buffers
+3. tile render
+4. export shaders to video frame by frame(usig ffmpeg)
 
 ___
 # How to use
