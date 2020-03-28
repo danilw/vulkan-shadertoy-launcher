@@ -18,7 +18,7 @@ ___
 TODO:
 1. keyboard support
 2. sound and 3d textures support, and mipmap for buffers
-3. tile render
+3. config file support and tile render
 4. export shaders to video frame by frame(usig ffmpeg)
 
 ___
