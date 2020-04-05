@@ -357,7 +357,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                 [0] = {
                     .location = 0,
                     .binding = 0,
-                    .format = VK_FORMAT_R32G32B32_SFLOAT,
+                    .format = VK_FORMAT_R32G32_SFLOAT,
                     .offset = 0,
                 },
             };
@@ -446,7 +446,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             [0] = {
                 .location = 0,
                 .binding = 0,
-                .format = VK_FORMAT_R32G32B32_SFLOAT,
+                .format = VK_FORMAT_R32G32_SFLOAT,
                 .offset = 0,
             },
         };
