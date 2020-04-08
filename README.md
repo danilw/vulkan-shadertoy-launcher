@@ -17,7 +17,7 @@ Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launche
 ___
 TODO:
 1. keyboard support
-2. sound and 3d textures support, and mipmap for buffers *fix validations errors*
+2. video as texture, sound and 3d textures support, and mipmap for buffers *fix validations errors*
 3. config file support and tile render
 4. export shaders to video frame by frame (using ffmpeg)
 
