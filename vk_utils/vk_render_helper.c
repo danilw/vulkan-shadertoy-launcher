@@ -586,6 +586,7 @@ vk_error vk_render_init_buffer(struct vk_physical_device *phy_dev, struct vk_dev
 
 	retval = vk_render_copy_buffer(dev, essentials, buffer, &staging, buffer->size, name);
 
+	vk_free_buffers(dev, &staging, 1);
 	return retval;
 }
 
