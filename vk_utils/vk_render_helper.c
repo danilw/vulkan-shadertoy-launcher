@@ -570,7 +570,8 @@ vk_error vk_render_init_texture(struct vk_physical_device *phy_dev, struct vk_de
     else
         retval = vk_render_transition_images(dev, essentials, image, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout, VK_IMAGE_ASPECT_COLOR_BIT, name);
 
-	return retval;
+    vk_free_buffers(dev, &staging, 1);
+    return retval;
 }
 
 vk_error vk_render_init_buffer(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
