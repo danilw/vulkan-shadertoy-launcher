@@ -4,7 +4,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 **what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Read **how to use**, support features and limitations below.
 
-**Dependencies** - Vulkan library(sdk), MSVS or MinGW compiler for Windows. Linux require *xcb* and *xcb-keysyms* library.
+**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux require *xcb* and *xcb-keysyms* library.
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11)
 
