@@ -134,6 +134,7 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
 
 #include "../os_utils/os_win_utils.h"
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
+static void update_key_map(int w, int h, bool val);
 #include "../os_utils/xcb_x11_utils.h"
 #endif
 

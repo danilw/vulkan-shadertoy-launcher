@@ -4,7 +4,7 @@ project("example_minimal")
 
 find_package(Vulkan REQUIRED)
 if(NOT Vulkan_FOUND)
-    message("ERROR: Vulkan not found")
+    MESSAGE(FATAL_ERROR "ERROR: Vulkan not found")
 endif(NOT Vulkan_FOUND)
 set(Vulkan_LIBRARY)
 
@@ -18,33 +18,33 @@ if (Vulkan_FOUND)
 endif()
 
 set(SOURCES
-	"main.c" 
-	"../vk_utils/vk_utils.c"
-	"../vk_utils/vk_error_print.c"
-	"../vk_utils/vk_render_helper.c"
+    "main.c" 
+    "../vk_utils/vk_utils.c"
+    "../vk_utils/vk_error_print.c"
+    "../vk_utils/vk_render_helper.c"
 )
 
 add_executable(
-		Vk_shadertoy
-		${SOURCES} 
+        Vk_shadertoy
+        ${SOURCES} 
 )
-
 
 add_custom_command(TARGET Vk_shadertoy POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${CMAKE_SOURCE_DIR}/shaders/spv $<TARGET_FILE_DIR:Vk_shadertoy>/shaders/spv)
+                    ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:Vk_shadertoy>/shaders)
 add_custom_command(TARGET Vk_shadertoy POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_directory
                     ${CMAKE_SOURCE_DIR}/textures $<TARGET_FILE_DIR:Vk_shadertoy>/textures)
 
-if("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-
+if(("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC"))
   add_definitions(-DVK_USE_PLATFORM_WIN32_KHR )
   target_link_libraries(Vk_shadertoy ${Vulkan_LIBRARY})
-elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
-
+elseif((("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") AND ("${CMAKE_SYSTEM}" MATCHES "Windows")) OR (MINGW))
+  add_definitions(-DVK_USE_PLATFORM_WIN32_KHR -O2 -s -mwindows -fdata-sections -ffunction-sections -Wl,--gc-sections)
+  target_link_libraries(Vk_shadertoy m ${Vulkan_LIBRARY})
+elseif(("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") AND ("${CMAKE_SYSTEM}" MATCHES "Linux"))
   add_definitions(-DVK_USE_PLATFORM_XCB_KHR -O2 -s -fdata-sections -ffunction-sections -Wl,--gc-sections)
-  target_link_libraries(Vk_shadertoy m xcb ${Vulkan_LIBRARY})
+  target_link_libraries(Vk_shadertoy m xcb xcb-keysyms ${Vulkan_LIBRARY} )
 else()
   message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
 endif()
