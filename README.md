@@ -8,7 +8,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11)
 
-###**Bin builds** download:
+### **Bin builds** download:
 
 Used shaders for examples: shadertoy links *[example1](https://www.shadertoy.com/view/wlX3zn)*, *[example2](https://www.shadertoy.com/view/MstGWX)*, *[example3](https://www.shadertoy.com/view/lsXGzf)*
 
