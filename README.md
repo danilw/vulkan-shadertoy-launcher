@@ -16,10 +16,10 @@ Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launche
 
 ___
 TODO:
-1. keyboard support
-2. video as texture, sound and 3d textures support, and mipmap for buffers *fix validations errors*
-3. config file support and tile render
-4. export shaders to video frame by frame (using ffmpeg)
+
+1. video as texture, sound and 3d textures support, and mipmap for buffers *fix validations errors*
+2. config file support and tile render
+3. export shaders to video frame by frame (using ffmpeg)
 
 ___
 # How to use
@@ -48,12 +48,14 @@ change in any order you need, `iTextures` is images from `*.png` files. Default 
 
 **textures** names in `textures/` folder \<1-4\>.png files
 
-4. **Compile shaders** to `*.spv` format using *glslangValidator* command list in file [build_shaders.sh](https://github.com/danilw/vulkan-shadertoy-launcher/blob/master/launcher/shaders/build_shaders.sh)
+4. **Compile shaders** to `*.spv` format using *glslangValidator* command list in file *build_shaders.cmd* or *build_shaders.sh*
 
-4. **Launch** `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
+5. **Launch** `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
 
 ___
 # Support features and extra
+
+0. **Input** *Mouse and Keyboard* same as on shadertoy.
 
 1. **Textures** mipmaps enabled by default, edit in `main.c` option `USE_MIPMAPS`, all textures with VFlip to change remove `stbi_set_flip_vertically_on_load(true);`
 
@@ -71,12 +73,11 @@ ___
 
 1. Only 2D textures(images), cubemaps, sound, and 3d textures not supported.\<TODO\>
 
-2. Control only Mouse (same as on shadertoy), Keyboard not supported.\<TODO\>
+2. Buffers only Linear filtering. to have `Nearest` fileter, `texelFetch` in shaders can be used instead of `texture`.
 
-3. Textures use only Linear or Mipmap filtering, Buffers only Linear filtering. to have `Nearest` fileter, `texelFetch` in shaders can be used instead of `texture`.
+3. List of not implemented Uniforms - `iSampleRate` does not exist now, `iChannelTime` does not exist, `iFrameRate` does not exist, `iChannelResolution` use in shader [textureSize](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/textureSize.xhtml) instead.
 
-4. List of not implemented Uniforms - `iSampleRate` does not exist now, `iChannelTime` does not exist, `iFrameRate` does not exist, `iChannelResolution` use in shader [textureSize](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/textureSize.xhtml) instead. Everything else work same as on shadertoy.
-
+Everything else work same as on shadertoy.
 
 ___
 # Building
