@@ -97,7 +97,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             }
         }
         
-        if(os_window.is_minimized){ //I do not delete everything on minimize, only stop rendering
+        if(os_window.is_minimized||(((os_window.app_data.pause)&&(!os_window.pause_refresh)))){ //I do not delete everything on minimize, only stop rendering
             sleep_ms(10);
         }
         break;
