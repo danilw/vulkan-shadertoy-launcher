@@ -36,8 +36,21 @@
 //names textures/<X>.png X start from 1
 #define IMAGE_TEXTURES 4
 
+//to see where keyboard texture used
+#define iKeyboard 1
+
 //linear or mipmap for textures
 #define USE_MIPMAPS true
+
+//TODO tile render, if you need render slow shaders or on slow hardware, WaitForFence always 1.0 sec
+//static bool use_tile_render=false;
+//static const int static_fps=60; //fake-fps when tile render used(that include iTime and Delta delays)
+
+//keyboard is texture that send from this data
+static bool keyboard_map[0xff][3]={0}; //[ASCII code][0: current state of key, 1: Keypress, 2: toggle for key]
+static uint8_t keyboard_texture[256*3*4]={0}; //texture
+static bool keyboard_need_update=false;
+static bool keyboard_draw=false;
 
 struct shaders_uniforms {
     float iMouse[4];
@@ -76,7 +89,7 @@ struct render_data
 
     struct shaders_uniforms push_constants;
 
-    struct vk_image images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS];
+    struct vk_image images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard];
     struct vk_buffer buffers[2];
     struct vk_shader shaders[2+OFFSCREEN_BUFFERS*2];
     struct vk_graphics_buffers *main_gbuffers;
@@ -112,6 +125,9 @@ bool first_submission = true;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 #include <shellapi.h>
 
+static void check_hotkeys(struct app_os_window *os_window);
+static void update_key_map(int w, int h, bool val);
+static void update_keypress();
 static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window);
 static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
                              struct vk_swapchain *swapchain, struct render_data *render_data, struct app_os_window *os_window);
@@ -121,53 +137,60 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
 #include "../os_utils/xcb_x11_utils.h"
 #endif
 
-static vk_error init_texture(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
-                             struct vk_image *image, const char *name, bool mipmaps)
+#include "textures.h"
+
+static void update_key_map(int w, int h, bool val)
+{
+    keyboard_map[w][h]=val;
+    keyboard_texture[(h * 256 + w) * 4]=val?0xff:0x00;
+}
+
+static void update_keypress(){
+    if(keyboard_need_update)keyboard_draw=true;
+    else keyboard_draw=false;
+    if(keyboard_need_update){
+        for(uint8_t i=0;i<0xff;i++){
+            update_key_map(i,1,false);
+        }
+    }
+    keyboard_need_update=false;
+}
+
+static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct vk_device *dev,
+                                     struct vk_render_essentials *essentials, struct render_data *render_data)
 {
     vk_error retval = VK_ERROR_NONE;
-
-    int width, height, channels;
-    stbi_set_flip_vertically_on_load(true); //flip image Y
-    uint8_t *generated_texture = stbi_load(name, &width, &height, &channels, STBI_rgb_alpha);
-    if(generated_texture == NULL) {
-        retval.error.type=VK_ERROR_ERRNO;
-        printf("Error in loading image\n");
-        return retval;
-    }
-
-    VkFormat img_format=VK_FORMAT_R8G8B8A8_UNORM; //VK_FORMAT_R8G8B8A8_SRGB
-
-    *image = (struct vk_image) {
-        .format = img_format,
-        .extent = { .width = width, .height = height },
-        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .make_view = true,
-        .host_visible = false,
-        .anisotropyEnable = true,
-        .repeat_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT, //VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER //VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
-        .mipmaps = mipmaps,
-    };
-
-    retval = vk_create_images(phy_dev, dev, image, 1);
-    if (!vk_error_is_success(&retval))
+    VkResult res;
+    if(!keyboard_draw)return true;
+    if (!essentials->first_render)
     {
-        retval.error.type=VK_ERROR_ERRNO;
-        vk_error_printf(&retval, "Failed to create texture images\n");
-        stbi_image_free(generated_texture);
-        return retval;
+        res = vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+        vk_error_set_vkresult(&retval, res);
+        if (res)
+        {
+            vk_error_printf(&retval, "Wait for fence failed\n");
+            return false;
+        }
     }
+    
+    retval = vk_render_update_texture(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, keyboard_texture, "iKeyboard");
+    if (!vk_error_is_success(&retval))
+        return false;
+    
+    return true;
+}
 
-    retval = vk_render_init_texture(phy_dev, dev, essentials, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, generated_texture, name);
-
-    stbi_image_free(generated_texture);
-    return retval;
+static void check_hotkeys(struct app_os_window *os_window){
+    const int Key_Escape = 27,Key_Space = 32,Key_0 = 48,Key_1 = 49;
+    if(keyboard_map[Key_Escape][1])os_window->app_data.quit = true;
+    if(keyboard_map[Key_Space][1])os_window->app_data.pause = !os_window->app_data.pause;
+    if(keyboard_map[Key_0][1])os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
+    if(keyboard_map[Key_1][1])os_window->fps_lock = !os_window->fps_lock;
 }
 
 static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct vk_device *dev,
                                      struct vk_swapchain *swapchain, struct vk_render_essentials *essentials, struct render_data *render_data, bool reload_shaders)
 {
-
     static bool load_once=false;
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
@@ -213,15 +236,18 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
             char txt[255]= {0};
             sprintf(txt,"textures/%d.png",i+1);
-            retval = init_texture(phy_dev, dev, essentials, &render_data->images[i], txt, USE_MIPMAPS);
+            retval = init_texture_file(phy_dev, dev, essentials, &render_data->images[i], txt, USE_MIPMAPS);
             if (!vk_error_is_success(&retval))
                 return retval;
         }
         for(uint32_t i=IMAGE_TEXTURES; i<IMAGE_TEXTURES+OFFSCREEN_BUFFERS; i++) {
-            retval = init_texture(phy_dev, dev, essentials, &render_data->images[i], "textures/empty.png", false);
+            retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i],1,1);
             if (!vk_error_is_success(&retval))
                 return retval;
         }
+        retval = texture_empty(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],256,3); //iKeyboard
+        if (!vk_error_is_success(&retval))
+            return retval;
     }
     if((!load_once)||(reload_shaders)) {
         render_data->shaders[SHADER_MAIN_VERTEX] = (struct vk_shader) {
@@ -238,7 +264,6 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                 .spirv_file = "shaders/spv/buf.vert.spv",
                  .stage = VK_SHADER_STAGE_VERTEX_BIT,
             };
-            //txt[i]=char[255]{0};
             if(i>0) {
                 sprintf(txt[i/2],"shaders/spv/buf%d.frag.spv",i/2);
             } else {
@@ -291,7 +316,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
             // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
             retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT, &render_data->buf_obuffers[i*2], 2,
-                                                 &render_data->buf_render_pass[i], VK_C_CLEAR, VK_WITHOUT_DEPTH);
+                                                 &render_data->buf_render_pass[i], VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "Could not create off-screen buffers\n");
@@ -303,8 +328,8 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #endif
 
     struct vk_image **image_pointer; //&render_data->buf_obuffers[2].color
-    image_pointer = malloc(1 * sizeof(struct vk_image*) * (IMAGE_TEXTURES+OFFSCREEN_BUFFERS));
-    for(uint32_t i=0; i<IMAGE_TEXTURES+OFFSCREEN_BUFFERS; i++) {
+    image_pointer = malloc(1 * sizeof(struct vk_image*) * (IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard));
+    for(uint32_t i=0; i<IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard; i++) {
         image_pointer[i]=&render_data->images[i];
     }
 
@@ -327,7 +352,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 
             struct vk_resources resources = {
                 .images = *image_pointer,
-                .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
+                .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard,
                 .buffers = render_data->buffers,
                 .buffer_count = 2,
                 .shaders = &render_data->shaders[SHADER_MAIN_FRAGMENT+1+i*2],
@@ -416,7 +441,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 
         struct vk_resources resources = {
             .images = *image_pointer,
-            .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
+            .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard,
             .buffers = render_data->buffers,
             .buffer_count = 2,
             .shaders = &render_data->shaders[SHADER_MAIN_VERTEX],
@@ -508,7 +533,7 @@ static void free_render_data(struct vk_device *dev, struct vk_render_essentials 
     vk_free_layouts(dev, &render_data->main_layout, 1);
     vk_free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
     vk_free_layouts(dev, render_data->buf_layout, OFFSCREEN_BUFFERS);
-    vk_free_images(dev, render_data->images, IMAGE_TEXTURES+OFFSCREEN_BUFFERS);
+    vk_free_images(dev, render_data->images, IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard);
 
     vk_free_buffers(dev, render_data->buffers, 2);
     vk_free_shaders(dev, render_data->shaders, 2+OFFSCREEN_BUFFERS*2);
@@ -719,9 +744,9 @@ void update_params(struct app_data_struct *app_data, bool fps_lock) {
     if(fps_lock)FPS_LOCK(60);
     float delta=update_fps_delta();
     if(!app_data->pause) {
-        app_data->iFrame++;
         app_data->iTime+=delta;
     }
+    app_data->iFrame++;
     app_data->iTimeDelta=delta;
     float pause_time=pres_pause(app_data->pause);
 }
@@ -864,7 +889,7 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
         }
     }
 
-    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS] = {0};
+    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard] = {0};
     for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
         set_write_image_info[i]=(VkDescriptorImageInfo) {
             .sampler = render_data->images[i].sampler,
@@ -879,8 +904,13 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
+    set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS]=(VkDescriptorImageInfo) {
+            .sampler = render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].sampler,
+            .imageView = render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
 
-    VkWriteDescriptorSet set_write[2] = {
+    VkWriteDescriptorSet set_write[3] = {
         [0]={
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet = render_data->buf_desc_set[buffer_index],
@@ -897,8 +927,16 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
         },
+        [2]={
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = render_data->buf_desc_set[buffer_index],
+            .dstBinding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
+            .descriptorCount = iKeyboard,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],
+        },
     };
-    vkUpdateDescriptorSets(dev->device, 2, set_write, 0, NULL);
+    vkUpdateDescriptorSets(dev->device, 3, set_write, 0, NULL);
 
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             render_data->buf_layout[buffer_index].pipeline_layout, 0, 1, &render_data->buf_desc_set[buffer_index], 0, NULL);
@@ -969,6 +1007,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vk_error retval = VK_ERROR_NONE;
 
     set_push_constants(os_window);
+    if(!update_iKeyboard_texture(phy_dev, dev, &essentials, &render_data))
+        return false;
 
     for(int i=0; i<OFFSCREEN_BUFFERS; i++) {
         if (!render_loop_buf(phy_dev, dev, &essentials, &render_data, offscreen_cmd_buffer[i], render_index, i, &os_window->app_data)) {
@@ -1076,7 +1116,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vkCmdBeginRenderPass(essentials.cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(essentials.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, render_data.main_pipeline.pipeline);
 
-    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS] = {0};
+    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard] = {0};
     for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
         set_write_image_info[i]=(VkDescriptorImageInfo) {
             .sampler = render_data.images[i].sampler,
@@ -1091,8 +1131,13 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
               .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
+    set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS]=(VkDescriptorImageInfo) {
+            .sampler = render_data.images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].sampler,
+             .imageView = render_data.images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].view,
+              .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
 
-    VkWriteDescriptorSet set_write[2] = {
+    VkWriteDescriptorSet set_write[3] = {
         [0]={
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet = render_data.main_desc_set,
@@ -1109,8 +1154,16 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
         },
+        [2]={
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = render_data.main_desc_set,
+            .dstBinding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
+            .descriptorCount = iKeyboard,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],
+        },
     };
-    vkUpdateDescriptorSets(dev->device, 2, set_write, 0, NULL);
+    vkUpdateDescriptorSets(dev->device, 3, set_write, 0, NULL);
 
     vkCmdBindDescriptorSets(essentials.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             render_data.main_layout.pipeline_layout, 0, 1, &render_data.main_desc_set, 0, NULL);
@@ -1164,8 +1217,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
         return false;
 
     update_params(&os_window->app_data,os_window->fps_lock);
-    if(render_index>=1)render_index=0;
-    else render_index+=1;
+    render_index=(render_index+1)%2;
+    os_window->pause_refresh=false;
     return true;
 
 }
@@ -1190,7 +1243,8 @@ void init_win_params(struct app_os_window *os_window) {
     os_window->resize_event=false;
     os_window->reload_shaders_on_resize=false;
     os_window->print_debug=false;
-    strncpy(os_window->name, "Vulkan Shader launcher | twitter.com/AruGL", APP_NAME_STR_LEN);
+    os_window->pause_refresh=false;
+    strncpy(os_window->name, "Vulkan Shadertoy launcher | twitter.com/AruGL", APP_NAME_STR_LEN);
 }
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
@@ -1198,19 +1252,34 @@ static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device
 {
     while (!os_window->app_data.quit)
     {
+        update_keypress();
         xcb_generic_event_t *event;
-
         if (os_window->app_data.pause) {
             event = xcb_wait_for_event(os_window->connection);
         }
         else {
             event = xcb_poll_for_event(os_window->connection);
         }
+        // a workaround for repeated key events
+        // save original state of each modifyed button and check if it was modifyed twice
+        bool save_map[0xff+1][3]={0};
+        bool state_map[0xff+1][2]={0};
+        
         while (event) {
-            app_handle_xcb_event(os_window, event);
+            app_handle_xcb_event(os_window, event, save_map, state_map);
             free(event);
             event = xcb_poll_for_event(os_window->connection);
         }
+        if(keyboard_need_update){
+            for(int i=0;i<0xff;i++){
+                if((state_map[i][0])&&(state_map[i][1])){
+                    update_key_map(i,0,save_map[i][0]);
+                    update_key_map(i,1,save_map[i][1]);
+                    update_key_map(i,2,save_map[i][2]);
+                }
+            }
+        }
+        check_hotkeys(os_window);
         if((!os_window->is_minimized)&&(!os_window->resize_event)) {
             if(!os_window->app_data.quit) {
                 os_window->app_data.quit=!render_loop_draw(phy_dev, dev, swapchain, os_window);

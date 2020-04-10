@@ -1,38 +1,90 @@
+// Created by inigo quilez - iq/2013
+// https://www.shadertoy.com/view/lsXGzf
 
-//used shader https://www.shadertoy.com/view/wlX3zn
+// An example showing how to use the keyboard input.
+//
+// Row 0: contain the current state of the 256 keys. 
+// Row 1: contains Keypress.
+// Row 2: contains a toggle for every key.
+//
+// Texel positions correspond to ASCII codes. Press arrow keys to test.
 
-// bufA self reading test
-// bufB cross reading(copy of this mainImage) 
-// bufC display iResolution
-// bufD display iTime iFrame
 
-// from https://www.shadertoy.com/view/XsG3z1
-vec4 mainImage_bufA(out vec4 fragColor, in vec2 fragCoord){
-    vec2 uv = fragCoord;
-    float c = 1. - texture(iChannel0, uv).y; 
-    float c2 = 1. - texture(iChannel0, uv + .5/iResolution.xy).y;
-    float pattern = -cos(uv.x*.75*3.14159 - .9)*cos(uv.y*1.5*3.14159 - .75)*.5 + .5;
-    vec3 col = pow(vec3(1.5, 1, 1)*c, vec3(1, 2.25, 6));
-    col = mix(col, col.zyx, clamp(pattern - .2, 0., 1.) );
-    col += vec3(.6, .85, 1.)*max(c2*c2 - c*c, 0.)*12.;
-    col *= pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y) , .125)*1.15;
-    col *= smoothstep(0., 1., iTime/2.);
-    return vec4(min(col, 1.), 1); 
-}
+// See also:
+//
+// Input - Keyboard    : https://www.shadertoy.com/view/lsXGzf
+// Input - Microphone  : https://www.shadertoy.com/view/llSGDh
+// Input - Mouse       : https://www.shadertoy.com/view/Mss3zH
+// Input - Sound       : https://www.shadertoy.com/view/Xds3Rr
+// Input - SoundCloud  : https://www.shadertoy.com/view/MsdGzn
+// Input - Time        : https://www.shadertoy.com/view/lsXGz8
+// Input - TimeDelta   : https://www.shadertoy.com/view/lsKGWV
+// Inout - 3D Texture  : https://www.shadertoy.com/view/4llcR4
 
+
+const int KEY_LEFT  = 37;
+const int KEY_UP    = 38;
+const int KEY_RIGHT = 39;
+const int KEY_DOWN  = 40;
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    vec2 uv = fragCoord/iResolution.xy;
-    vec3 col = vec3(0.);
-	
-	uv*=2.;// simple tiles
-	int id=int(uv.x)+int(uv.y)*2; //tile ID
-	uv=fract(uv);// 4 tiles
-	if(id==0)col=mainImage_bufA(fragColor,uv).rgb;
-	if(id==1)col=texture(iChannel1,uv).rgb;
-	if(id==2)col=texture(iChannel2,uv).rgb;
-	if(id==3)col=texture(iChannel3,uv).bgr;
-	
+    vec2 uv = (-iResolution.xy + 2.0*fragCoord) / iResolution.y;
+
+    vec3 col = vec3(0.0);
+
+    // state
+    col = mix( col, vec3(1.0,0.0,0.0), 
+        (1.0-smoothstep(0.3,0.31,length(uv-vec2(-0.75,0.0))))*
+        (0.3+0.7*texelFetch( iChannel0, ivec2(KEY_LEFT,0), 0 ).x) );
+
+    col = mix( col, vec3(1.0,1.0,0.0), 
+        (1.0-smoothstep(0.3,0.31,length(uv-vec2(0.0,0.5))))*
+        (0.3+0.7*texelFetch( iChannel0, ivec2(KEY_UP,0), 0 ).x));
+    
+    col = mix( col, vec3(0.0,1.0,0.0),
+        (1.0-smoothstep(0.3,0.31,length(uv-vec2(0.75,0.0))))*
+        (0.3+0.7*texelFetch( iChannel0, ivec2(KEY_RIGHT,0), 0 ).x));
+
+    col = mix( col, vec3(0.0,0.0,1.0),
+        (1.0-smoothstep(0.3,0.31,length(uv-vec2(0.0,-0.5))))*
+        (0.3+0.7*texelFetch( iChannel0, ivec2(KEY_DOWN,0), 0 ).x));
+
+
+    // keypress 
+    col = mix( col, vec3(1.0,0.0,0.0), 
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(-0.75,0.0))-0.35)))*
+        texelFetch( iChannel0, ivec2(KEY_LEFT,1),0 ).x);
+    
+    col = mix( col, vec3(1.0,1.0,0.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,0.5))-0.35)))*
+        texelFetch( iChannel0, ivec2(KEY_UP,1),0 ).x);
+
+    col = mix( col, vec3(0.0,1.0,0.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.75,0.0))-0.35)))*
+        texelFetch( iChannel0, ivec2(KEY_RIGHT,1),0 ).x);
+    
+    col = mix( col, vec3(0.0,0.0,1.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,-0.5))-0.35)))*
+        texelFetch( iChannel0, ivec2(KEY_DOWN,1),0 ).x);
+    
+    
+    // toggle   
+    col = mix( col, vec3(1.0,0.0,0.0), 
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(-0.75,0.0))-0.3)))*
+        texelFetch( iChannel0, ivec2(KEY_LEFT,2),0 ).x);
+    
+    col = mix( col, vec3(1.0,1.0,0.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,0.5))-0.3)))*
+        texelFetch( iChannel0, ivec2(KEY_UP,2),0 ).x);
+
+    col = mix( col, vec3(0.0,1.0,0.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.75,0.0))-0.3)))*
+        texelFetch( iChannel0, ivec2(KEY_RIGHT,2),0 ).x);
+    
+    col = mix( col, vec3(0.0,0.0,1.0),
+        (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,-0.5))-0.3)))*
+        texelFetch( iChannel0, ivec2(KEY_DOWN,2),0 ).x);
+
     fragColor = vec4(col,1.0);
 }

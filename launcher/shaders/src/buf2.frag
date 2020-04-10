@@ -11,6 +11,7 @@ layout (location = 0) in vec2 frag_pos;
 
 layout (set = 0, binding = 0) uniform sampler2D iTextures[IMAGE_TEXTURES]; //textures
 layout (set = 0, binding = IMAGE_TEXTURES) uniform sampler2D iChannels[OFFSCREEN_BUFFERS]; //buffers
+layout (set = 0, binding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS) uniform sampler2D iKeyboard; //keyboard
 
 //define in any order
 #define iChannel0 iChannels[0]
@@ -20,15 +21,15 @@ layout (set = 0, binding = IMAGE_TEXTURES) uniform sampler2D iChannels[OFFSCREEN
 
 layout (push_constant) uniform push_constants
 {
-	vec4 u_Mouse;
-	vec4 u_Date;
-	bvec2 u_Mouse_lr;
-	vec2 u_Resolution;
-	bool u_debugdraw;
-	bool u_pause;
-	float u_Time;
-	float u_TimeDelta;
-	int u_Frame;
+    vec4 u_Mouse;
+    vec4 u_Date;
+    bvec2 u_Mouse_lr;
+    vec2 u_Resolution;
+    bool u_debugdraw;
+    bool u_pause;
+    float u_Time;
+    float u_TimeDelta;
+    int u_Frame;
 } constants;
 
 vec3 iResolution=vec3(constants.u_Resolution,1.);
