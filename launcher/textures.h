@@ -7,7 +7,7 @@ static vk_error init_texture_mem(struct vk_physical_device *phy_dev, struct vk_d
     *image = (struct vk_image) {
         .format = img_format,
         .extent = { .width = width, .height = height },
-        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         .make_view = true,
         .host_visible = false,

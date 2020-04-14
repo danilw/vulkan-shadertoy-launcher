@@ -503,7 +503,12 @@ vk_error vk_render_transition_images_mipmaps(struct vk_physical_device *phy_dev,
         if (mipWidth > 1) mipWidth /= 2;
         if (mipHeight > 1) mipHeight /= 2;
     }
-
+    
+    image_barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    image_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    image_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    image_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
     vkCmdPipelineBarrier(essentials->cmd_buffer,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -558,6 +563,7 @@ vk_error vk_render_update_texture(struct vk_physical_device *phy_dev, struct vk_
         .imageExtent = {
             .width = image->extent.width,
             .height = image->extent.height,
+            .depth = 1,
         },
     };
     retval = vk_render_copy_buffer_to_image(dev, essentials, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &staging, &image_copy, name);
@@ -594,6 +600,7 @@ vk_error vk_render_init_texture(struct vk_physical_device *phy_dev, struct vk_de
         .imageExtent = {
             .width = image->extent.width,
             .height = image->extent.height,
+            .depth = 1,
         },
     };
 

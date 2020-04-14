@@ -495,6 +495,14 @@ vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, str
         .oldSwapchain = oldSwapchain,
         .clipped = true,
     };
+    
+    uint32_t *presentable_queues = NULL;
+    uint32_t presentable_queue_count = 0;
+
+    retval = vk_get_presentable_queues(phy_dev, dev, swapchain->surface, &presentable_queues, &presentable_queue_count);
+    if (!vk_error_is_success(&retval) || presentable_queue_count == 0)
+        return retval;
+    free(presentable_queues);
 
     res = vkCreateSwapchainKHR(dev->device, &swapchain_info, NULL, &swapchain->swapchain);
     vk_error_set_vkresult(&retval, res);
