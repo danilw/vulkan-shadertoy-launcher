@@ -30,6 +30,7 @@
 //same numbers in <*.frag> files
 //number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
 //names shaders/spv/<file>.spv look files names in that foldred
+//binding order: look vk_make_graphics_layouts() first images then uniforms(not used)
 #define OFFSCREEN_BUFFERS 4
 
 //number of images(>0)
@@ -365,7 +366,8 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             render_data->buf_layout[i] = (struct vk_layout) {
                 .resources = &resources,
             };
-            retval = vk_make_graphics_layouts(dev, &render_data->buf_layout[i], 1);
+            uint32_t img_patern[3]={IMAGE_TEXTURES,OFFSCREEN_BUFFERS,iKeyboard};
+            retval = vk_make_graphics_layouts(dev, &render_data->buf_layout[i], 1, true, img_patern, 3);
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "BUF: Could not create descriptor set or pipeline layouts\n");
@@ -383,7 +385,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                 [0] = {
                     .location = 0,
                     .binding = 0,
-                    .format = VK_FORMAT_R32G32_SFLOAT,
+                    .format = VK_FORMAT_R32G32B32_SFLOAT,
                     .offset = 0,
                 },
             };
@@ -454,7 +456,8 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         render_data->main_layout = (struct vk_layout) {
             .resources = &resources,
         };
-        retval = vk_make_graphics_layouts(dev, &render_data->main_layout, 1);
+        uint32_t img_patern[3]={IMAGE_TEXTURES,OFFSCREEN_BUFFERS,iKeyboard};
+        retval = vk_make_graphics_layouts(dev, &render_data->main_layout, 1, true, img_patern, 3);
         if (!vk_error_is_success(&retval))
         {
             vk_error_printf(&retval, "Could not create descriptor set or pipeline layouts\n");
@@ -472,7 +475,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             [0] = {
                 .location = 0,
                 .binding = 0,
-                .format = VK_FORMAT_R32G32_SFLOAT,
+                .format = VK_FORMAT_R32G32B32_SFLOAT,
                 .offset = 0,
             },
         };

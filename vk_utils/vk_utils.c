@@ -918,7 +918,8 @@ void vk_free_graphics_buffers(struct vk_device *dev, struct vk_graphics_buffers 
 }
 
 
-vk_error vk_make_graphics_layouts(struct vk_device *dev, struct vk_layout *layouts, uint32_t layout_count)
+vk_error vk_make_graphics_layouts(struct vk_device *dev, struct vk_layout *layouts, uint32_t layout_count,
+         bool w_img_pattern, uint32_t *img_pattern, uint32_t img_pattern_size)
 {
     uint32_t successful = 0;
     vk_error retval = VK_ERROR_NONE;
@@ -933,20 +934,27 @@ vk_error vk_make_graphics_layouts(struct vk_device *dev, struct vk_layout *layou
         layout->pipeline_layout = NULL;
 
         VkDescriptorSetLayoutBinding *set_layout_bindings;
-        set_layout_bindings = malloc((resources->image_count + resources->buffer_count)*sizeof(VkDescriptorSetLayoutBinding));
+        if(w_img_pattern){
+            set_layout_bindings = malloc((img_pattern_size + resources->buffer_count)*sizeof(VkDescriptorSetLayoutBinding));
+        }else{
+            set_layout_bindings = malloc((resources->image_count + resources->buffer_count)*sizeof(VkDescriptorSetLayoutBinding));
+        }
         uint32_t binding_count = 0;
-
-        for (uint32_t j = 0; j < resources->image_count; ++j)
+        uint32_t tidx=0;
+        for (uint32_t j = 0; j < (w_img_pattern?img_pattern_size:resources->image_count); ++j)
         {
-            if ((resources->images[j].usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) == 0)
+            if ((resources->images[(w_img_pattern?tidx:j)].usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) == 0)
                 continue;
-
+            tidx=0;
+            if(w_img_pattern){
+                for(int tj=0;tj<j;tj++)tidx+=img_pattern[tj];
+            }
             set_layout_bindings[binding_count] = (VkDescriptorSetLayoutBinding){
-                .binding = binding_count,
-                .descriptorType = resources->images[j].usage & VK_IMAGE_USAGE_SAMPLED_BIT?
+                .binding = w_img_pattern?tidx:binding_count,
+                .descriptorType = resources->images[(w_img_pattern?tidx:j)].usage & VK_IMAGE_USAGE_SAMPLED_BIT?
                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .descriptorCount = 1,
+                .descriptorCount = (w_img_pattern?img_pattern[j]:1),
                 .stageFlags = resources->images[j].stage,
             };
 
@@ -957,9 +965,9 @@ vk_error vk_make_graphics_layouts(struct vk_device *dev, struct vk_layout *layou
         {
             if ((resources->buffers[j].usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)) == 0)
                 continue;
-
+            if(w_img_pattern)tidx++;
             set_layout_bindings[binding_count] = (VkDescriptorSetLayoutBinding){
-                .binding = binding_count,
+                .binding = w_img_pattern?tidx:binding_count,
                 .descriptorType = resources->buffers[j].usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT?
                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -969,7 +977,7 @@ vk_error vk_make_graphics_layouts(struct vk_device *dev, struct vk_layout *layou
 
             ++binding_count;
         }
-
+        
         VkDescriptorSetLayoutCreateInfo set_layout_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .bindingCount = binding_count,
