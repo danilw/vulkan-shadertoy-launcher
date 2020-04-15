@@ -12,7 +12,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 Used shaders for examples: shadertoy links *[example1](https://www.shadertoy.com/view/wlX3zn)*, *[example2](https://www.shadertoy.com/view/MstGWX)*, *[example3](https://www.shadertoy.com/view/lsXGzf)*
 
-Download **[from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**, or direct links latest build: Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_win.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_linux.zip)**
+**Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**, or direct links latest build: Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_win.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_linux.zip)**
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
