@@ -97,7 +97,7 @@ make
 
 Build with **gcc** (linux): (to build with *clang* change *gcc* to *clang*)
 ```
-gcc -DVK_USE_PLATFORM_XCB_KHR -O2 -s -lm -lxcb -lvulkan ../vk_utils/vk_utils.c ../vk_utils/vk_error_print.c ../vk_utils/vk_render_helper.c main.c -o VK_shadertoy_launcher
+gcc -DVK_USE_PLATFORM_XCB_KHR -O2 -s -lm -lxcb -lxcb-keysyms -lvulkan ../vk_utils/vk_utils.c ../vk_utils/vk_error_print.c ../vk_utils/vk_render_helper.c main.c -o VK_shadertoy_launcher
 ```
 Build with **mingw64** (*vulkan-1.dll* from VulkanSDK, *vulkan.h* in system(cygwin or native) path):
 ```
