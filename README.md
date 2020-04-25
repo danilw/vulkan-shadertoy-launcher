@@ -19,6 +19,7 @@ Used shaders for examples: shadertoy links *[example1](https://www.shadertoy.com
 ___
 TODO:
 
+0. Wayland support and proper Linux build in Ubuntu LTS (current build use latest libraryes, not stable).
 1. video as texture, sound and 3d textures support, and mipmap for buffers
 2. config file support and tile render
 3. export shaders to video frame by frame (using ffmpeg)
