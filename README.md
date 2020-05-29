@@ -10,13 +10,13 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 
 ### **Bin builds** download:
 
-Used shaders for examples: shadertoy links *[example1](https://www.shadertoy.com/view/wlX3zn)*, *[example2](https://www.shadertoy.com/view/MstGWX)*, *[example3](https://www.shadertoy.com/view/lsXGzf)*
+Used shaders for examples: shadertoy links *[1](https://www.shadertoy.com/view/wlX3zn)*, *[2](https://www.shadertoy.com/view/MstGWX)*, *[3](https://www.shadertoy.com/view/lsXGzf)*
 
 **Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**, or direct links latest build: Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_win.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_linux.zip)**
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
-**Apps that I made using this code:** [glsl auto tetris](https://www.pouet.net/prod.php?which=85052), [glsl card game](https://www.pouet.net/prod.php?which=84806), [likes (glsl game)](https://www.pouet.net/prod.php?which=84805), 
+**Apps that I made using this code:** [glsl auto tetris](https://www.pouet.net/prod.php?which=85052), [glsl card game](https://www.pouet.net/prod.php?which=84806), [likes (glsl game)](https://www.pouet.net/prod.php?which=84805)
 
 ___
 TODO:
