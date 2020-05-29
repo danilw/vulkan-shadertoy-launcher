@@ -16,6 +16,8 @@ Used shaders for examples: shadertoy links *[example1](https://www.shadertoy.com
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
+**Apps that I made using this code:** [glsl auto tetris](https://www.pouet.net/prod.php?which=85052), [glsl card game](https://www.pouet.net/prod.php?which=84806), [likes (glsl game)](https://www.pouet.net/prod.php?which=84805), 
+
 ___
 TODO:
 
