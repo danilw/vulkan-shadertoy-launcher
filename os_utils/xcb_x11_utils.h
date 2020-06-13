@@ -230,8 +230,17 @@ Key_SemiColon = 186, Key_Equal = 187, Key_Comma = 188, Key_Dash = 189, Key_Perio
 Key_ForwardSlash = 191, Key_GraveAccent = 192, Key_OpenBracket = 219, Key_BackSlash = 220, Key_CloseBraket = 221, Key_SingleQuote = 222;
 
 // this is not ASCII keys, this used to detect keys when NumLock pressed/not
-static const uint8_t Key_npx0 = 239, Key_npx1 = 240, Key_npx2 = 241, Key_npx3 = 242, Key_npx4 = 243, Key_npx5 = 244,
-Key_npx6 = 245, Key_npx7 = 246, Key_npx8 = 247, Key_npx9 = 248, Key_npx10 = 249;
+#define Key_npx0 239
+#define Key_npx1 240
+#define Key_npx2 241
+#define Key_npx3 242
+#define Key_npx4 243
+#define Key_npx5 244
+#define Key_npx6 245
+#define Key_npx7 246
+#define Key_npx8 247
+#define Key_npx9 248
+#define Key_npx10 249
 
 static uint8_t check_num(bool nmod,uint8_t key){
     if(nmod){
