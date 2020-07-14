@@ -40,30 +40,30 @@
 
 enum vk_error_type
 {
-	VK_ERROR_SUCCESS = 0,
-	VK_ERROR_VKRESULT,
-	VK_ERROR_VKRESULT_WARNING,	/* VK_INCOMPLETE for example */
-	VK_ERROR_ERRNO,
+    VK_ERROR_SUCCESS = 0,
+    VK_ERROR_VKRESULT,
+    VK_ERROR_VKRESULT_WARNING,  /* VK_INCOMPLETE for example */
+    VK_ERROR_ERRNO,
 };
 
-struct vk_error_data
+typedef struct vk_error_data
 {
-	enum vk_error_type type;
-	union {
-		VkResult vkresult;
-		int err_no;
-	};
-	const char *file;
-	unsigned int line;
+    enum vk_error_type type;
+    union {
+        VkResult vkresult;
+        int err_no;
+    };
+    const char *file;
+    unsigned int line;
 } vk_error_data;
 
 typedef struct vk_error
 {
-	struct vk_error_data error;
-	struct vk_error_data sub_error;	/*
-						 * Used in cases where error is e.g. "VK_INCOMPLETE", and it is due to
-						 * another error.
-						 */
+    struct vk_error_data error;
+    struct vk_error_data sub_error; /*
+                         * Used in cases where error is e.g. "VK_INCOMPLETE", and it is due to
+                         * another error.
+                         */
 } vk_error;
 
 #define VK_ERROR_NONE (struct vk_error){ .error = { .type = VK_ERROR_SUCCESS,}, .sub_error = { .type = VK_ERROR_SUCCESS,}, }
@@ -74,8 +74,8 @@ typedef struct vk_error
 #define vk_error_sub_set_errno(es, e)    vk_error_data_set_errno   (&(es)->sub_error, (e), __FILE__, __LINE__)
 #define vk_error_merge(es, os)                                \
 do {                                                            \
-	if (vk_error_data_merge(&(es)->error, &(os)->error))  \
-		(es)->sub_error = (os)->sub_error;              \
+    if (vk_error_data_merge(&(es)->error, &(os)->error))  \
+        (es)->sub_error = (os)->sub_error;              \
 } while (0)
 #define vk_error_sub_merge(es, os)       vk_error_data_merge(&(es)->sub_error, &(os)->error)
 
