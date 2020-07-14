@@ -49,13 +49,13 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 #define iChannel2 iChannels[2]
 #define iChannel3 iChannels[3]
 ```
-change in any order you need, `iTextures` is images from `*.png` files. Default order \<0-4\> by file name.
+change in any order you need, `iTextures` is images from `*.png` files. Default order \<0-3\> by file name.
 
 **textures** names in `textures/` folder \<1-4\>.png files
 
 4. **Compile shaders** to `*.spv` format using *glslangValidator* command list in file *build_shaders.cmd* or *build_shaders.sh*
 
-5. **Launch** `VK_shadertoy_launcher.exe` and it shoult work same as on shadertoy
+5. **Launch** `VK_shadertoy_launcher.exe` and it should work same as on shadertoy
 
 ___
 # Support features and extra
