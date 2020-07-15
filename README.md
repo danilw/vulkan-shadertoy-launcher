@@ -20,7 +20,7 @@ Used shaders for examples: shadertoy links *[1](https://www.shadertoy.com/view/w
 
 ___
 TODO:
-0.0 rework this page
+0. rework this page
 1. sound and 3d textures support, and mipmap for buffers
 2. config file support and tile render
 3. export shaders to video frame by frame (using ffmpeg), Wayland support, video as texture
