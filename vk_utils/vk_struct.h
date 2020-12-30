@@ -1,5 +1,6 @@
 
 // Danil, 2020 Vulkan shader launcher, self https://github.com/danilw/vulkan-shader-launcher
+// The MIT License
 
 #ifndef vk_struct_H
 #define vk_struct_H
