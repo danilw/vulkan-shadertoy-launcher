@@ -1,5 +1,5 @@
 
-// Danil, 2020 Vulkan shader launcher, self https://github.com/danilw/vulkan-shader-launcher
+// Danil, 2020 Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
 // The MIT License
 
 #ifndef vk_render_helper_H
