@@ -15,7 +15,7 @@ void vk_render_cleanup_essentials(struct vk_render_essentials *essentials, struc
  * Acquire an image from the swapchain, reset the command buffer, start recording, perform layout transition from
  * undefined to to_layout.
  */
-int vk_render_start(struct vk_render_essentials *essentials, struct vk_device *dev,
+VkResult vk_render_start(struct vk_render_essentials *essentials, struct vk_device *dev,
         struct vk_swapchain *swapchain, VkImageLayout to_layout, uint32_t *image_index);
 
 

@@ -1,0 +1,2 @@
+set VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
+VK_shadertoy_launcher_VS2019.exe

@@ -3,11 +3,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//define to not resize offscreen-buf on resize
-//#define NO_RESIZE_BUF
+// USEFUL defines (list, use search to see what they do)
 
-//define to use one CommandBuffer for all offscreen rendering
-//#define ONE_CMD
+// NO_RESIZE_BUF
+// CUSTOM_BUF_SIZE
+// USE_stb_image
+// OFFSCREEN_BUFFERS
+// IMAGE_TEXTURES
+// USE_MIPMAPS
+// buffers are VK_FORMAT_R32G32B32A32_SFLOAT
+
+// TODO features
+// wayland
+// build in shader and yariv
+// tile render
+// rendering frames to video
+
+// define to not resize offscreen-buf on window resize (buffer size will be same as window on startup)
+// #define NO_RESIZE_BUF
+
+// if you need custom static buffer size (iResolution unique to each buffer and will be equal to this value in buffers)
+// #define CUSTOM_BUF_SIZE {.width = 256, .height = 256,}
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
 #include <unistd.h>
@@ -22,43 +38,50 @@
 #include "../vk_utils/vk_render_helper.h"
 #include "../os_utils/utils.h"
 
-//using stb_image
+// remove this define to NOT use stb_image.h (compiled size will 50Kb smaller)
+// when stb_image.h not used - every image is empty(vec4(0.0)) 1x1 pixel look textures.h texture_empty
+#define USE_stb_image
+
+#ifdef USE_stb_image
+// using stb_image
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_THREAD_LOCALS
 #include "stb_image.h"
+#endif
 
-//same numbers in <*.frag> files
-//number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
-//names shaders/spv/<file>.spv look files names in that foldred
-//binding order: look vk_make_graphics_layouts() first images then uniforms(not used)
+// numbers buffers <*.frag> files
+// number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
+// names shaders/spv/<file>.spv look files names in that foldred
+// binding order: look vk_make_graphics_layouts() first images then uniforms(not used(using push_const instead of
+// uniforms))
 #define OFFSCREEN_BUFFERS 4
 
-//number of images(>0)
-//names textures/<X>.png X start from 1
+// number of images(>0)
+// names textures/<X>.png X start from 1
 #define IMAGE_TEXTURES 4
 
-//to see where keyboard texture used
-#define iKeyboard 1
-
-//linear or mipmap for textures
+// linear or mipmap for textures
 #define USE_MIPMAPS true
 
-//TODO tile render, if you need render slow shaders or on slow hardware, WaitForFence always 1.0 sec
-//static bool use_tile_render=false;
-//static const int static_fps=60; //fake-fps when tile render used(that include iTime and Delta delays)
+// keyboard is texture that send from this data
+static bool keyboard_map[0xff][3] = {0}; //[ASCII code][0: current state of key, 1: Keypress, 2: toggle for key]
+static uint8_t keyboard_texture[256 * 3 * 4] = {0}; // texture
+static bool keyboard_need_update = false;
+static bool keyboard_draw = false;
 
-//keyboard is texture that send from this data
-static bool keyboard_map[0xff][3]={0}; //[ASCII code][0: current state of key, 1: Keypress, 2: toggle for key]
-static uint8_t keyboard_texture[256*3*4]={0}; //texture
-static bool keyboard_need_update=false;
-static bool keyboard_draw=false;
+// update to 2021 Shadertoy iMouse.w change https://www.shadertoy.com/view/llySRh (comments)
+static bool last_iMousel_clicked[2] = {false, false};
 
-struct shaders_uniforms {
+// do not edit, it just to see where keyboard texture used
+#define iKeyboard 1
+
+struct shaders_push_constants
+{
     float iMouse[4];
     float iDate[4];
     int iMouse_lr[2];
     float iResolution[2];
-    int debugdraw;
+    int debugdraw; // look function check_hotkeys
     int pause;
     float iTime;
     float iTimeDelta;
@@ -88,11 +111,11 @@ struct render_data
         uint16_t indices[4];
     } objects;
 
-    struct shaders_uniforms push_constants;
+    struct shaders_push_constants push_constants;
 
-    struct vk_image images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard];
+    struct vk_image images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard];
     struct vk_buffer buffers[2];
-    struct vk_shader shaders[2+OFFSCREEN_BUFFERS*2];
+    struct vk_shader shaders[2 + OFFSCREEN_BUFFERS * 2];
     struct vk_graphics_buffers *main_gbuffers;
     struct vk_offscreen_buffers *buf_obuffers;
 
@@ -105,10 +128,12 @@ struct render_data
     struct vk_layout main_layout;
     struct vk_pipeline main_pipeline;
     VkDescriptorSet main_desc_set;
-
 };
 
-struct render_data render_data = { .main_gbuffers = NULL, .buf_obuffers = NULL, };
+struct render_data render_data = {
+    .main_gbuffers = NULL,
+    .buf_obuffers = NULL,
+};
 VkInstance vk;
 struct vk_physical_device phy_dev;
 struct vk_device dev;
@@ -118,7 +143,6 @@ struct vk_render_essentials essentials;
 
 VkFence offscreen_fence = VK_NULL_HANDLE;
 VkQueue offscreen_queue[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};
-bool use_one_VkQueue=false; //I check if more then 1 VK_QUEUE_GRAPHICS_BIT suported, then it set to true <-!!!
 VkCommandBuffer offscreen_cmd_buffer[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};
 VkSemaphore wait_buf_sem = VK_NULL_HANDLE, wait_main_sem = VK_NULL_HANDLE;
 bool first_submission = true;
@@ -129,9 +153,11 @@ bool first_submission = true;
 static void check_hotkeys(struct app_os_window *os_window);
 static void update_key_map(int w, int h, bool val);
 static void update_keypress();
-static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window);
-static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
-                             struct vk_swapchain *swapchain, struct render_data *render_data, struct app_os_window *os_window);
+static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                             struct app_os_window *os_window);
+static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_device *dev,
+                             struct vk_render_essentials *essentials, struct vk_swapchain *swapchain,
+                             struct render_data *render_data, struct app_os_window *os_window);
 
 #include "../os_utils/os_win_utils.h"
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
@@ -143,19 +169,24 @@ static void update_key_map(int w, int h, bool val);
 
 static void update_key_map(int w, int h, bool val)
 {
-    keyboard_map[w][h]=val;
-    keyboard_texture[(h * 256 + w) * 4]=val?0xff:0x00;
+    keyboard_map[w][h] = val;
+    keyboard_texture[(h * 256 + w) * 4] = val ? 0xff : 0x00;
 }
 
-static void update_keypress(){
-    if(keyboard_need_update)keyboard_draw=true;
-    else keyboard_draw=false;
-    if(keyboard_need_update){
-        for(uint8_t i=0;i<0xff;i++){
-            update_key_map(i,1,false);
+static void update_keypress()
+{
+    if (keyboard_need_update)
+        keyboard_draw = true;
+    else
+        keyboard_draw = false;
+    if (keyboard_need_update)
+    {
+        for (uint8_t i = 0; i < 0xff; i++)
+        {
+            update_key_map(i, 1, false);
         }
     }
-    keyboard_need_update=false;
+    keyboard_need_update = false;
 }
 
 static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct vk_device *dev,
@@ -163,7 +194,8 @@ static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct 
 {
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
-    if(!keyboard_draw)return true;
+    if (!keyboard_draw)
+        return true;
     if (!essentials->first_render)
     {
         res = vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
@@ -174,39 +206,48 @@ static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct 
             return false;
         }
     }
-    
-    retval = vk_render_update_texture(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, keyboard_texture, "iKeyboard");
+
+    retval =
+        vk_render_update_texture(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, keyboard_texture, "iKeyboard");
     if (!vk_error_is_success(&retval))
         return false;
-    
+
     return true;
 }
 
-static void check_hotkeys(struct app_os_window *os_window){
-    const int Key_Escape = 27,Key_Space = 32,Key_0 = 48,Key_1 = 49;
-    if(keyboard_map[Key_Escape][1])os_window->app_data.quit = true;
-    if(keyboard_map[Key_Space][1])os_window->app_data.pause = !os_window->app_data.pause;
-    if(keyboard_map[Key_0][1])os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
-    if(keyboard_map[Key_1][1])os_window->fps_lock = !os_window->fps_lock;
+static void check_hotkeys(struct app_os_window *os_window)
+{
+    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49;
+    if (keyboard_map[Key_Escape][1])
+        os_window->app_data.quit = true;
+    if (keyboard_map[Key_Space][1])
+        os_window->app_data.pause = !os_window->app_data.pause;
+    if (keyboard_map[Key_0][1])
+        os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
+    if (keyboard_map[Key_1][1])
+        os_window->fps_lock = !os_window->fps_lock;
 }
 
 static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct vk_device *dev,
-                                     struct vk_swapchain *swapchain, struct vk_render_essentials *essentials, struct render_data *render_data, bool reload_shaders)
+                                     struct vk_swapchain *swapchain, struct vk_render_essentials *essentials,
+                                     struct render_data *render_data, bool reload_shaders)
 {
-    static bool load_once=false;
+    static bool load_once = false;
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
-    if(!load_once) {
-        render_data->buffers[BUFFER_VERTICES] = (struct vk_buffer) {
+    if (!load_once)
+    {
+        render_data->buffers[BUFFER_VERTICES] = (struct vk_buffer){
             .size = sizeof render_data->objects.vertices,
-             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-              .host_visible = false,
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            .host_visible = false,
         };
 
-        render_data->buffers[BUFFER_INDICES] = (struct vk_buffer) {
+        render_data->buffers[BUFFER_INDICES] = (struct vk_buffer){
             .size = sizeof render_data->objects.indices,
-             .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-              .host_visible = false,
+            .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            .host_visible = false,
         };
 
         retval = vk_create_buffers(phy_dev, dev, render_data->buffers, 2);
@@ -216,96 +257,136 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             return retval;
         }
     }
-    if(!load_once) {
-        render_data->objects = (struct objects) {
-            .vertices = {
-                [0] = (struct vertex){ .pos = { 1.0,  1.0, 0.0}, },
-                [1] = (struct vertex){ .pos = { 1.0, -1.0, 0.0}, },
-                [2] = (struct vertex){ .pos = {-1.0,  1.0, 0.0}, },
-                [3] = (struct vertex){ .pos = {-1.0, -1.0, 0.0}, },
-            },
-            .indices = {
-                0, 1, 2, 3,
-            },
+    if (!load_once)
+    {
+        render_data->objects = (struct objects){
+            .vertices =
+                {
+                    [0] =
+                        (struct vertex){
+                            .pos = {1.0, 1.0, 0.0},
+                        },
+                    [1] =
+                        (struct vertex){
+                            .pos = {1.0, -1.0, 0.0},
+                        },
+                    [2] =
+                        (struct vertex){
+                            .pos = {-1.0, 1.0, 0.0},
+                        },
+                    [3] =
+                        (struct vertex){
+                            .pos = {-1.0, -1.0, 0.0},
+                        },
+                },
+            .indices =
+                {
+                    0,
+                    1,
+                    2,
+                    3,
+                },
         };
-        retval = vk_render_init_buffer(phy_dev, dev, essentials, &render_data->buffers[BUFFER_VERTICES], render_data->objects.vertices, "vertex");
+        retval = vk_render_init_buffer(phy_dev, dev, essentials, &render_data->buffers[BUFFER_VERTICES],
+                                       render_data->objects.vertices, "vertex");
         if (!vk_error_is_success(&retval))
             return retval;
-        retval = vk_render_init_buffer(phy_dev, dev, essentials, &render_data->buffers[BUFFER_INDICES], render_data->objects.indices, "index");
+        retval = vk_render_init_buffer(phy_dev, dev, essentials, &render_data->buffers[BUFFER_INDICES],
+                                       render_data->objects.indices, "index");
         if (!vk_error_is_success(&retval))
             return retval;
 
-        for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
-            char txt[255]= {0};
-            sprintf(txt,"textures/%d.png",i+1);
+        for (uint32_t i = 0; i < IMAGE_TEXTURES; i++)
+        {
+            char txt[255] = {0};
+            sprintf(txt, "textures/%d.png", i + 1);
+#ifdef USE_stb_image
             retval = init_texture_file(phy_dev, dev, essentials, &render_data->images[i], txt, USE_MIPMAPS);
+#else
+            retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i], 1, 1);
+#endif
             if (!vk_error_is_success(&retval))
                 return retval;
         }
-        for(uint32_t i=IMAGE_TEXTURES; i<IMAGE_TEXTURES+OFFSCREEN_BUFFERS; i++) {
-            retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i],1,1);
+        for (uint32_t i = IMAGE_TEXTURES; i < IMAGE_TEXTURES + OFFSCREEN_BUFFERS; i++)
+        {
+            retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i], 1, 1);
             if (!vk_error_is_success(&retval))
                 return retval;
         }
-        retval = texture_empty(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],256,3); //iKeyboard
+        retval = texture_empty(phy_dev, dev, essentials, &render_data->images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS], 256,
+                               3); // iKeyboard
         if (!vk_error_is_success(&retval))
             return retval;
     }
-    if((!load_once)||(reload_shaders)) {
-        render_data->shaders[SHADER_MAIN_VERTEX] = (struct vk_shader) {
+    if ((!load_once) || (reload_shaders))
+    {
+        render_data->shaders[SHADER_MAIN_VERTEX] = (struct vk_shader){
             .spirv_file = "shaders/spv/main.vert.spv",
-             .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
         };
-        render_data->shaders[SHADER_MAIN_FRAGMENT] = (struct vk_shader) {
+        render_data->shaders[SHADER_MAIN_FRAGMENT] = (struct vk_shader){
             .spirv_file = "shaders/spv/main.frag.spv",
-             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         };
-        char txt[OFFSCREEN_BUFFERS][255]= {0};
-        for(uint32_t i=0; i<OFFSCREEN_BUFFERS*2; i+=2) {
-            render_data->shaders[i+2] = (struct vk_shader) {
+        char txt[OFFSCREEN_BUFFERS][255] = {0};
+        for (uint32_t i = 0; i < OFFSCREEN_BUFFERS * 2; i += 2)
+        {
+            render_data->shaders[i + 2] = (struct vk_shader){
                 .spirv_file = "shaders/spv/buf.vert.spv",
-                 .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                .stage = VK_SHADER_STAGE_VERTEX_BIT,
             };
-            if(i>0) {
-                sprintf(txt[i/2],"shaders/spv/buf%d.frag.spv",i/2);
-            } else {
-                sprintf(txt[i/2],"shaders/spv/buf.frag.spv");
+            if (i > 0)
+            {
+                sprintf(txt[i / 2], "shaders/spv/buf%d.frag.spv", i / 2);
             }
-            render_data->shaders[i+2+1] = (struct vk_shader) {
-                .spirv_file = txt[i/2],
-                 .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            else
+            {
+                sprintf(txt[i / 2], "shaders/spv/buf.frag.spv");
+            }
+            render_data->shaders[i + 2 + 1] = (struct vk_shader){
+                .spirv_file = txt[i / 2],
+                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             };
         }
-        retval = vk_load_shaders(dev, render_data->shaders, 2+OFFSCREEN_BUFFERS*2);
+        retval = vk_load_shaders(dev, render_data->shaders, 2 + OFFSCREEN_BUFFERS * 2);
         if (!vk_error_is_success(&retval))
         {
             vk_error_printf(&retval, "Could not load the shaders\n");
             return retval;
         }
-
     }
     render_data->main_gbuffers = malloc(essentials->image_count * sizeof *render_data->main_gbuffers);
     for (uint32_t i = 0; i < essentials->image_count; ++i)
-        render_data->main_gbuffers[i] = (struct vk_graphics_buffers) {
-        .surface_size = swapchain->surface_caps.currentExtent,
-         .swapchain_image = essentials->images[i],
-    };
+        render_data->main_gbuffers[i] = (struct vk_graphics_buffers){
+            .surface_size = swapchain->surface_caps.currentExtent,
+            .swapchain_image = essentials->images[i],
+        };
 
 #ifdef NO_RESIZE_BUF
-    if(!load_once) {
+    if (!load_once)
+    {
 #endif
-        render_data->buf_obuffers = malloc(2 * (sizeof (*render_data->buf_obuffers)) * OFFSCREEN_BUFFERS);
-        for (uint32_t i = 0; i < 2*OFFSCREEN_BUFFERS; i++)
-            render_data->buf_obuffers[i] = (struct vk_offscreen_buffers) {
+        render_data->buf_obuffers = malloc(2 * (sizeof(*render_data->buf_obuffers)) * OFFSCREEN_BUFFERS);
+        for (uint32_t i = 0; i < 2 * OFFSCREEN_BUFFERS; i++)
+            render_data->buf_obuffers[i] = (struct vk_offscreen_buffers)
+            {
+#if defined(CUSTOM_BUF_SIZE) && defined(NO_RESIZE_BUF)
+                .surface_size = (struct VkExtent2D)CUSTOM_BUF_SIZE,
+#else
             .surface_size = swapchain->surface_caps.currentExtent,
-        };
+#endif
+            };
 #ifdef NO_RESIZE_BUF
     }
 #endif
 
     // 8bit BGRA for main_image VK_FORMAT_B8G8R8A8_UNORM
-    retval = vk_create_graphics_buffers(phy_dev, dev, swapchain->surface_format.format, render_data->main_gbuffers, essentials->image_count,
-                                        &render_data->main_render_pass, VK_C_CLEAR, VK_WITHOUT_DEPTH);
+    // can be used swapchain->surface_format.format but AMD use VK_FORMAT_B8G8R8A8_SRGB instead of
+    // VK_FORMAT_B8G8R8A8_UNORM
+    retval = vk_create_graphics_buffers(phy_dev, dev, VK_FORMAT_B8G8R8A8_UNORM, render_data->main_gbuffers,
+                                        essentials->image_count, &render_data->main_render_pass, VK_C_CLEAR,
+                                        VK_WITHOUT_DEPTH);
     if (!vk_error_is_success(&retval))
     {
         vk_error_printf(&retval, "Could not create graphics buffers\n");
@@ -313,12 +394,15 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
     }
 
 #ifdef NO_RESIZE_BUF
-    if(!load_once) {
+    if (!load_once)
+    {
 #endif
-        for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
+        for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)
+        {
             // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
-            retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT, &render_data->buf_obuffers[i*2], 2,
-                                                 &render_data->buf_render_pass[i], VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
+            retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                 &render_data->buf_obuffers[i * 2], 2, &render_data->buf_render_pass[i],
+                                                 VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "Could not create off-screen buffers\n");
@@ -330,9 +414,10 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #endif
 
     struct vk_image **image_pointer; //&render_data->buf_obuffers[2].color
-    image_pointer = malloc(1 * sizeof(struct vk_image*) * (IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard));
-    for(uint32_t i=0; i<IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard; i++) {
-        image_pointer[i]=&render_data->images[i];
+    image_pointer = malloc(1 * sizeof(struct vk_image *) * (IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard));
+    for (uint32_t i = 0; i < IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard; i++)
+    {
+        image_pointer[i] = &render_data->images[i];
     }
 
     VkPushConstantRange push_constant_range = {
@@ -341,32 +426,32 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         .size = sizeof render_data->push_constants,
     };
 
-
-        /*******************
-            * BUF PART *
-         *******************/
+    /*******************
+     * BUF PART *
+     *******************/
 #ifdef NO_RESIZE_BUF
-    if(!load_once) {
+    if (!load_once)
+    {
 #endif
-        for (int i=0; i<OFFSCREEN_BUFFERS; i++)
+        for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
         {
             /* Layouts */
 
             struct vk_resources resources = {
                 .images = *image_pointer,
-                .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard,
+                .image_count = IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard,
                 .buffers = render_data->buffers,
                 .buffer_count = 2,
-                .shaders = &render_data->shaders[SHADER_MAIN_FRAGMENT+1+i*2],
+                .shaders = &render_data->shaders[SHADER_MAIN_FRAGMENT + 1 + i * 2],
                 .shader_count = 2,
                 .push_constants = &push_constant_range,
                 .push_constant_count = 1,
                 .render_pass = render_data->buf_render_pass[i],
             };
-            render_data->buf_layout[i] = (struct vk_layout) {
+            render_data->buf_layout[i] = (struct vk_layout){
                 .resources = &resources,
             };
-            uint32_t img_patern[3]={IMAGE_TEXTURES,OFFSCREEN_BUFFERS,iKeyboard};
+            uint32_t img_patern[3] = {IMAGE_TEXTURES, OFFSCREEN_BUFFERS, iKeyboard};
             retval = vk_make_graphics_layouts(dev, &render_data->buf_layout[i], 1, true, img_patern, 3);
             if (!vk_error_is_success(&retval))
             {
@@ -382,29 +467,33 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             };
 
             VkVertexInputAttributeDescription vertex_attributes[1] = {
-                [0] = {
-                    .location = 0,
-                    .binding = 0,
-                    .format = VK_FORMAT_R32G32B32_SFLOAT,
-                    .offset = 0,
-                },
+                [0] =
+                    {
+                        .location = 0,
+                        .binding = 0,
+                        .format = VK_FORMAT_R32G32B32_SFLOAT,
+                        .offset = 0,
+                    },
             };
-            render_data->buf_pipeline[i] = (struct vk_pipeline) {
+            render_data->buf_pipeline[i] = (struct vk_pipeline){
                 .layout = &render_data->buf_layout[i],
-                .vertex_input_state = {
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                    .vertexBindingDescriptionCount = 1,
-                    .pVertexBindingDescriptions = &vertex_binding,
-                    .vertexAttributeDescriptionCount = 1,
-                    .pVertexAttributeDescriptions = vertex_attributes,
-                },
-                .input_assembly_state = {
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-                    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-                },
-                .tessellation_state = {
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
-                },
+                .vertex_input_state =
+                    {
+                        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                        .vertexBindingDescriptionCount = 1,
+                        .pVertexBindingDescriptions = &vertex_binding,
+                        .vertexAttributeDescriptionCount = 1,
+                        .pVertexAttributeDescriptions = vertex_attributes,
+                    },
+                .input_assembly_state =
+                    {
+                        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                    },
+                .tessellation_state =
+                    {
+                        .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+                    },
                 .thread_count = 1,
             };
 
@@ -444,7 +533,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 
         struct vk_resources resources = {
             .images = *image_pointer,
-            .image_count = IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard,
+            .image_count = IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard,
             .buffers = render_data->buffers,
             .buffer_count = 2,
             .shaders = &render_data->shaders[SHADER_MAIN_VERTEX],
@@ -453,10 +542,10 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             .push_constant_count = 1,
             .render_pass = render_data->main_render_pass,
         };
-        render_data->main_layout = (struct vk_layout) {
+        render_data->main_layout = (struct vk_layout){
             .resources = &resources,
         };
-        uint32_t img_patern[3]={IMAGE_TEXTURES,OFFSCREEN_BUFFERS,iKeyboard};
+        uint32_t img_patern[3] = {IMAGE_TEXTURES, OFFSCREEN_BUFFERS, iKeyboard};
         retval = vk_make_graphics_layouts(dev, &render_data->main_layout, 1, true, img_patern, 3);
         if (!vk_error_is_success(&retval))
         {
@@ -472,29 +561,33 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         };
 
         VkVertexInputAttributeDescription vertex_attributes[1] = {
-            [0] = {
-                .location = 0,
-                .binding = 0,
-                .format = VK_FORMAT_R32G32B32_SFLOAT,
-                .offset = 0,
-            },
+            [0] =
+                {
+                    .location = 0,
+                    .binding = 0,
+                    .format = VK_FORMAT_R32G32B32_SFLOAT,
+                    .offset = 0,
+                },
         };
-        render_data->main_pipeline = (struct vk_pipeline) {
+        render_data->main_pipeline = (struct vk_pipeline){
             .layout = &render_data->main_layout,
-            .vertex_input_state = {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                .vertexBindingDescriptionCount = 1,
-                .pVertexBindingDescriptions = &vertex_binding,
-                .vertexAttributeDescriptionCount = 1,
-                .pVertexAttributeDescriptions = vertex_attributes,
-            },
-            .input_assembly_state = {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-                .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-            },
-            .tessellation_state = {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
-            },
+            .vertex_input_state =
+                {
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                    .vertexBindingDescriptionCount = 1,
+                    .pVertexBindingDescriptions = &vertex_binding,
+                    .vertexAttributeDescriptionCount = 1,
+                    .pVertexAttributeDescriptions = vertex_attributes,
+                },
+            .input_assembly_state =
+                {
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                },
+            .tessellation_state =
+                {
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+                },
             .thread_count = 1,
         };
 
@@ -522,14 +615,14 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
         }
     }
 
-    load_once=true;
+    load_once = true;
     free(image_pointer);
-
 
     return retval;
 }
 
-static void free_render_data(struct vk_device *dev, struct vk_render_essentials *essentials, struct render_data *render_data)
+static void free_render_data(struct vk_device *dev, struct vk_render_essentials *essentials,
+                             struct render_data *render_data)
 {
     vkDeviceWaitIdle(dev->device);
 
@@ -537,13 +630,14 @@ static void free_render_data(struct vk_device *dev, struct vk_render_essentials 
     vk_free_layouts(dev, &render_data->main_layout, 1);
     vk_free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
     vk_free_layouts(dev, render_data->buf_layout, OFFSCREEN_BUFFERS);
-    vk_free_images(dev, render_data->images, IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard);
+    vk_free_images(dev, render_data->images, IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard);
 
     vk_free_buffers(dev, render_data->buffers, 2);
-    vk_free_shaders(dev, render_data->shaders, 2+OFFSCREEN_BUFFERS*2);
+    vk_free_shaders(dev, render_data->shaders, 2 + OFFSCREEN_BUFFERS * 2);
 
-    for (int i=0; i<OFFSCREEN_BUFFERS; i++) {
-        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i*2], 2, render_data->buf_render_pass[i]);
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
     }
     vk_free_graphics_buffers(dev, render_data->main_gbuffers, essentials->image_count, render_data->main_render_pass);
 
@@ -552,74 +646,63 @@ static void free_render_data(struct vk_device *dev, struct vk_render_essentials 
 }
 
 // TO DO FREE BZUF FENCE LOOP
-static void exit_cleanup_render_loop(struct vk_device *dev, struct vk_render_essentials *essentials, struct render_data *render_data,
-                                     VkSemaphore wait_buf_sem, VkSemaphore wait_main_sem, VkFence offscreen_fence)
+static void exit_cleanup_render_loop(struct vk_device *dev, struct vk_render_essentials *essentials,
+                                     struct render_data *render_data, VkSemaphore wait_buf_sem,
+                                     VkSemaphore wait_main_sem, VkFence offscreen_fence)
 {
     vkDeviceWaitIdle(dev->device);
-    if(offscreen_fence!= VK_NULL_HANDLE)vkDestroyFence(dev->device, offscreen_fence, NULL);
-    if(wait_main_sem!= VK_NULL_HANDLE)vkDestroySemaphore(dev->device, wait_main_sem, NULL);
-    if(wait_buf_sem!= VK_NULL_HANDLE)vkDestroySemaphore(dev->device, wait_buf_sem, NULL);
+    if (offscreen_fence != VK_NULL_HANDLE)
+        vkDestroyFence(dev->device, offscreen_fence, NULL);
+    if (wait_main_sem != VK_NULL_HANDLE)
+        vkDestroySemaphore(dev->device, wait_main_sem, NULL);
+    if (wait_buf_sem != VK_NULL_HANDLE)
+        vkDestroySemaphore(dev->device, wait_buf_sem, NULL);
     free_render_data(dev, essentials, render_data);
     vk_render_cleanup_essentials(essentials, dev);
 }
 
-static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window)
+static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                             struct app_os_window *os_window)
 {
     int res;
     vk_error retval = VK_ERROR_NONE;
-    static bool once=false;
+    static bool once = false;
 
     res = vk_render_get_essentials(&essentials, phy_dev, dev, swapchain);
-    if (res) {
+    if (res)
+    {
         vk_render_cleanup_essentials(&essentials, dev);
         return;
     }
 
-    if(!once) {
+    if (!once)
+    {
         uint32_t *presentable_queues = NULL;
         uint32_t presentable_queue_count = 0;
 
-        retval = vk_get_presentable_queues(phy_dev, dev, swapchain->surface, &presentable_queues, &presentable_queue_count);
+        retval =
+            vk_get_presentable_queues(phy_dev, dev, swapchain->surface, &presentable_queues, &presentable_queue_count);
         if (!vk_error_is_success(&retval) || presentable_queue_count == 0)
         {
-            printf("No presentable queue families.  You should have got this error in vk_render_get_essentials before.\n");
+            printf(
+                "No presentable queue families.  You should have got this error in vk_render_get_essentials before.\n");
             free(presentable_queues);
             vk_render_cleanup_essentials(&essentials, dev);
             return;
         }
 
-#if !defined(ONE_CMD)
-        //check to use 1 cmd_buffer per Queues or 1 Queue for many cmd_buffers
-        if (dev->command_pools[presentable_queues[0]].queue_count < 1+OFFSCREEN_BUFFERS)
+        for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)
         {
-            retval.error.type=VK_ERROR_ERRNO;
-            printf("Not enough queues in the presentable queue family %u, used only one queue.\n", presentable_queues[0]);
-            use_one_VkQueue = false;
-        } else {
-            use_one_VkQueue = true;
-        }
-#endif
-        if(use_one_VkQueue)
-        {
-            for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
-                offscreen_queue[i] = dev->command_pools[presentable_queues[0]].queues[1+i];
-                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1+i];
-            }
-        } else {
-            for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
-                offscreen_queue[i] = dev->command_pools[presentable_queues[0]].queues[0];
-#if defined(ONE_CMD)
-                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1];
-#else
-                offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1+i];
-#endif
-            }
+            offscreen_queue[i] =
+                dev->command_pools[presentable_queues[0]].queues[0]; // used only one presentable queue always
+            offscreen_cmd_buffer[i] = dev->command_pools[presentable_queues[0]].buffers[1 + i];
         }
 
         free(presentable_queues);
     }
 
-    retval = allocate_render_data(phy_dev, dev, swapchain, &essentials, &render_data, os_window->reload_shaders_on_resize);
+    retval =
+        allocate_render_data(phy_dev, dev, swapchain, &essentials, &render_data, os_window->reload_shaders_on_resize);
     if (!vk_error_is_success(&retval))
     {
         free_render_data(dev, &essentials, &render_data);
@@ -627,13 +710,16 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
         return;
     }
 #ifdef NO_RESIZE_BUF
-    if(!once) {
+    if (!once)
+    {
 #endif
-        for (int i=0; i<OFFSCREEN_BUFFERS*2; i++) {
+        for (int i = 0; i < OFFSCREEN_BUFFERS * 2; i++)
+        {
             retval = vk_render_transition_images(dev, &essentials, &render_data.buf_obuffers[i].color, 1,
                                                  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                  VK_IMAGE_ASPECT_COLOR_BIT, "off-screen color");
-            if (!vk_error_is_success(&retval)) {
+            if (!vk_error_is_success(&retval))
+            {
                 free_render_data(dev, &essentials, &render_data);
                 vk_render_cleanup_essentials(&essentials, dev);
                 return;
@@ -642,7 +728,8 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
 #ifdef NO_RESIZE_BUF
     }
 #endif
-    if(!once) {
+    if (!once)
+    {
         VkSemaphoreCreateInfo sem_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
@@ -674,17 +761,16 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
             exit_cleanup_render_loop(dev, &essentials, &render_data, wait_buf_sem, wait_main_sem, offscreen_fence);
             return;
         }
-
     }
-    once=true;
+    once = true;
     os_window->prepared = true;
-    os_window->resize_event=false;
+    os_window->resize_event = false;
 
     return;
-
 }
 
-static void exit_cleanup(VkInstance vk, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window)
+static void exit_cleanup(VkInstance vk, struct vk_device *dev, struct vk_swapchain *swapchain,
+                         struct app_os_window *os_window)
 {
     vk_free_swapchain(vk, dev, swapchain);
     vk_cleanup(dev);
@@ -696,13 +782,14 @@ static void exit_cleanup(VkInstance vk, struct vk_device *dev, struct vk_swapcha
     vk_exit(vk);
 }
 
-
-static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
-                             struct vk_swapchain *swapchain, struct render_data *render_data, struct app_os_window *os_window)
+static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_device *dev,
+                             struct vk_render_essentials *essentials, struct vk_swapchain *swapchain,
+                             struct render_data *render_data, struct app_os_window *os_window)
 {
     vk_error res = VK_ERROR_NONE;
 
-    if(!os_window->prepared)return true;
+    if (!os_window->prepared)
+        return true;
 
     vkDeviceWaitIdle(dev->device);
     os_window->prepared = false;
@@ -713,14 +800,15 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
 
 #ifndef NO_RESIZE_BUF
     vk_free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
-    for (int i=0; i<OFFSCREEN_BUFFERS; i++) {
-        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i*2], 2, render_data->buf_render_pass[i]);
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
     }
     vk_free_layouts(dev, render_data->buf_layout, OFFSCREEN_BUFFERS);
 #endif
 
-    if(os_window->reload_shaders_on_resize)
-        vk_free_shaders(dev, render_data->shaders, 2+OFFSCREEN_BUFFERS*2);
+    if (os_window->reload_shaders_on_resize)
+        vk_free_shaders(dev, render_data->shaders, 2 + OFFSCREEN_BUFFERS * 2);
 
     vk_render_cleanup_essentials(essentials, dev);
 
@@ -743,74 +831,96 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
     return true;
 }
 
-void update_params(struct app_data_struct *app_data, bool fps_lock) {
-    float rdelta=0;
-    if(fps_lock)FPS_LOCK(60);
-    float delta=update_fps_delta();
-    if(!app_data->pause) {
-        app_data->iTime+=delta;
+void update_params(struct app_data_struct *app_data, bool fps_lock)
+{
+    float rdelta = 0;
+    if (fps_lock)
+        FPS_LOCK(60);
+    float delta = update_fps_delta();
+    if (!app_data->pause)
+    {
+        app_data->iTime += delta;
     }
     app_data->iFrame++;
-    app_data->iTimeDelta=delta;
-    float pause_time=pres_pause(app_data->pause);
+    app_data->iTimeDelta = delta;
+    float pause_time = pres_pause(app_data->pause);
 }
 
-void set_push_constants(struct app_os_window *os_window) {
+void set_push_constants(struct app_os_window *os_window)
+{
     struct my_time_struct my_time;
     get_local_time(&my_time);
-    float day_sec=((float)my_time.msec)/1000.0+my_time.sec+my_time.min*60+my_time.hour*3600;
+    float day_sec = ((float)my_time.msec) / 1000.0 + my_time.sec + my_time.min * 60 + my_time.hour * 3600;
+    last_iMousel_clicked[0] = last_iMousel_clicked[1];
+    last_iMousel_clicked[1] = os_window->app_data.iMouse_click[0];
 
-    render_data.push_constants = (struct shaders_uniforms) {
-        .iResolution[0]=os_window->app_data.iResolution[0],
-        .iResolution[1]=os_window->app_data.iResolution[1],
-        .iTime=os_window->app_data.iTime,
-        .iTimeDelta=os_window->app_data.iTimeDelta,
-        .iFrame=os_window->app_data.iFrame,
-        .iMouse[0]=os_window->app_data.iMouse[0],
-        .iMouse[1]=os_window->app_data.iMouse[1],
-        .iMouse[2]=os_window->app_data.iMouse_lclick[0],
-        .iMouse[3]=os_window->app_data.iMouse_lclick[1],
-        .iMouse_lr[0]=(int)os_window->app_data.iMouse_click[0],
-        .iMouse_lr[1]=(int)os_window->app_data.iMouse_click[1],
-        .iDate[0]=my_time.year,
-        .iDate[1]=my_time.month,
-        .iDate[2]=my_time.day,
-        .iDate[3]=day_sec,
-        .debugdraw=(int)os_window->app_data.drawdebug,
-        .pause=(int)os_window->app_data.pause,
+    render_data.push_constants = (struct shaders_push_constants){
+        .iResolution[0] = os_window->app_data.iResolution[0],
+        .iResolution[1] = os_window->app_data.iResolution[1],
+        .iTime = os_window->app_data.iTime,
+        .iTimeDelta = os_window->app_data.iTimeDelta,
+        .iFrame = os_window->app_data.iFrame,
+        .iMouse[0] = os_window->app_data.iMouse[0],
+        .iMouse[1] = os_window->app_data.iMouse[1],
+        .iMouse[2] = os_window->app_data.iMouse_lclick[0],
+        .iMouse[3] = (last_iMousel_clicked[0]) ? -abs(os_window->app_data.iMouse_lclick[1])
+                                               : os_window->app_data.iMouse_lclick[1],
+        .iMouse_lr[0] = (int)os_window->app_data.iMouse_click[0],
+        .iMouse_lr[1] = (int)os_window->app_data.iMouse_click[1],
+        .iDate[0] = my_time.year,
+        .iDate[1] = my_time.month,
+        .iDate[2] = my_time.day,
+        .iDate[3] = day_sec,
+        .debugdraw = (int)os_window->app_data.drawdebug,
+        .pause = (int)os_window->app_data.pause,
     };
 }
 
-void update_push_constants_window_size(struct app_os_window *os_window) {
-    render_data.push_constants.iMouse[0]=os_window->app_data.iMouse[0];
-    render_data.push_constants.iMouse[1]=os_window->app_data.iMouse[1];
-    render_data.push_constants.iMouse[2]=os_window->app_data.iMouse_lclick[0];
-    render_data.push_constants.iMouse[3]=os_window->app_data.iMouse_lclick[1];
-    render_data.push_constants.iResolution[0]=os_window->app_data.iResolution[0];
-    render_data.push_constants.iResolution[1]=os_window->app_data.iResolution[1];
+void update_push_constants_window_size(struct app_os_window *os_window)
+{
+    render_data.push_constants.iMouse[0] = os_window->app_data.iMouse[0];
+    render_data.push_constants.iMouse[1] = os_window->app_data.iMouse[1];
+    render_data.push_constants.iMouse[2] = os_window->app_data.iMouse_lclick[0];
+    render_data.push_constants.iMouse[3] =
+        (last_iMousel_clicked[0]) ? -abs(os_window->app_data.iMouse_lclick[1]) : os_window->app_data.iMouse_lclick[1],
+    render_data.push_constants.iResolution[0] = os_window->app_data.iResolution[0];
+    render_data.push_constants.iResolution[1] = os_window->app_data.iResolution[1];
 }
 
 #define sign(x) ((x > 0) ? 1 : ((x < 0) ? -1 : 0))
-void update_push_constants_local_size(float width, float height) {
-    render_data.push_constants.iMouse[0]=((render_data.push_constants.iMouse[0]/render_data.push_constants.iResolution[1])-0.5*
-                                          (render_data.push_constants.iResolution[0]/render_data.push_constants.iResolution[1]))*height+0.5*width;
-    render_data.push_constants.iMouse[1]=((render_data.push_constants.iMouse[1]/render_data.push_constants.iResolution[1])-0.5)*height+0.5*height;
-    render_data.push_constants.iMouse[2]=sign(render_data.push_constants.iMouse[2])*(((abs(render_data.push_constants.iMouse[2])
-                                         /render_data.push_constants.iResolution[1])-0.5*
-                                         (render_data.push_constants.iResolution[0]/render_data.push_constants.iResolution[1]))*height+0.5*width);
-    render_data.push_constants.iMouse[3]=sign(render_data.push_constants.iMouse[3])*(((abs(render_data.push_constants.iMouse[3])
-                                         /render_data.push_constants.iResolution[1])-0.5)*height+0.5*height);
-    render_data.push_constants.iResolution[0]=width;
-    render_data.push_constants.iResolution[1]=height;
+void update_push_constants_local_size(float width, float height)
+{
+    render_data.push_constants.iMouse[0] =
+        ((render_data.push_constants.iMouse[0] / render_data.push_constants.iResolution[1]) -
+         0.5 * (render_data.push_constants.iResolution[0] / render_data.push_constants.iResolution[1])) *
+            height +
+        0.5 * width;
+    render_data.push_constants.iMouse[1] =
+        ((render_data.push_constants.iMouse[1] / render_data.push_constants.iResolution[1]) - 0.5) * height +
+        0.5 * height;
+    render_data.push_constants.iMouse[2] =
+        sign(render_data.push_constants.iMouse[2]) *
+        (((abs(render_data.push_constants.iMouse[2]) / render_data.push_constants.iResolution[1]) -
+          0.5 * (render_data.push_constants.iResolution[0] / render_data.push_constants.iResolution[1])) *
+             height +
+         0.5 * width);
+    render_data.push_constants.iMouse[3] =
+        sign(render_data.push_constants.iMouse[3]) *
+        (((abs(render_data.push_constants.iMouse[3]) / render_data.push_constants.iResolution[1]) - 0.5) * height +
+         0.5 * height);
+    render_data.push_constants.iResolution[0] = width;
+    render_data.push_constants.iResolution[1] = height;
 }
 
-static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
-                            struct render_data *render_data, VkCommandBuffer cmd_buffer, int render_index, int buffer_index, struct app_data_struct *app_data)
+static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device *dev,
+                            struct vk_render_essentials *essentials, struct render_data *render_data,
+                            VkCommandBuffer cmd_buffer, int render_index, int buffer_index,
+                            struct app_data_struct *app_data)
 {
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    if ((!essentials->first_render)&&(buffer_index==0))
+    if ((!essentials->first_render) && (buffer_index == 0))
     {
         res = vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
         vk_error_set_vkresult(&retval, res);
@@ -821,24 +931,20 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
         }
     }
 #ifdef NO_RESIZE_BUF
-    update_push_constants_local_size(render_data->buf_obuffers[render_index+buffer_index*2].surface_size.width, render_data->buf_obuffers[render_index+buffer_index*2].surface_size.height);
+    update_push_constants_local_size(render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.width,
+                                     render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.height);
 #endif
-#if defined(ONE_CMD)
-    if((use_one_VkQueue)||(buffer_index==0))
-#endif
+    vkResetCommandBuffer(cmd_buffer, 0);
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    };
+    res = vkBeginCommandBuffer(cmd_buffer, &begin_info);
+    vk_error_set_vkresult(&retval, res);
+    if (res)
     {
-        vkResetCommandBuffer(cmd_buffer, 0);
-        VkCommandBufferBeginInfo begin_info = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        };
-        res = vkBeginCommandBuffer(cmd_buffer, &begin_info);
-        vk_error_set_vkresult(&retval, res);
-        if (res)
-        {
-            vk_error_printf(&retval, "BUF: Couldn't even begin recording a command buffer\n");
-            return false;
-        }
-    }
+        vk_error_printf(&retval, "BUF: Couldn't even begin recording a command buffer\n");
+        return false;
+    };
     VkImageMemoryBarrier image_barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT,
@@ -847,35 +953,39 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
         .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = render_data->buf_obuffers[render_index+buffer_index*2].color.image,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
+        .image = render_data->buf_obuffers[render_index + buffer_index * 2].color.image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 
-    vkCmdPipelineBarrier(cmd_buffer,
-                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-                         0,
-                         0, NULL,
-                         0, NULL,
-                         1, &image_barrier);
+    vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL,
+                         0, NULL, 1, &image_barrier);
 
     VkClearValue clear_values = {
-        .color = { .float32 = {0.0, 0.0, 0.0, 1.0}, },
+        .color =
+            {
+                .float32 = {0.0, 0.0, 0.0, 1.0},
+            },
     };
     VkRenderPassBeginInfo pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = render_data->buf_render_pass[buffer_index],
-        .framebuffer = render_data->buf_obuffers[render_index+buffer_index*2].framebuffer,
-        .renderArea = {
-            .offset = { .x = 0, .y = 0, },
-            .extent = render_data->buf_obuffers[render_index+buffer_index*2].surface_size,
-        },
+        .framebuffer = render_data->buf_obuffers[render_index + buffer_index * 2].framebuffer,
+        .renderArea =
+            {
+                .offset =
+                    {
+                        .x = 0,
+                        .y = 0,
+                    },
+                .extent = render_data->buf_obuffers[render_index + buffer_index * 2].surface_size,
+            },
         .clearValueCount = 1,
         .pClearValues = &clear_values,
     };
@@ -884,66 +994,77 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, render_data->buf_pipeline[buffer_index].pipeline);
 
     int render_index_t[OFFSCREEN_BUFFERS];
-    for(int i=0; i<OFFSCREEN_BUFFERS; i++) {
-        if(i<buffer_index) {
-            render_index_t[i]=render_index+i*2;
-        } else {
-            render_index_t[i]=render_index-1+i*2;
-            if(render_index_t[i]<i*2)render_index_t[i]=1+i*2;
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        if (i < buffer_index)
+        {
+            render_index_t[i] = render_index + i * 2;
+        }
+        else
+        {
+            render_index_t[i] = render_index - 1 + i * 2;
+            if (render_index_t[i] < i * 2)
+                render_index_t[i] = 1 + i * 2;
         }
     }
 
-    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard] = {0};
-    for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
-        set_write_image_info[i]=(VkDescriptorImageInfo) {
+    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard] = {0};
+    for (uint32_t i = 0; i < IMAGE_TEXTURES; i++)
+    {
+        set_write_image_info[i] = (VkDescriptorImageInfo){
             .sampler = render_data->images[i].sampler,
             .imageView = render_data->images[i].view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
-    for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
-        set_write_image_info[IMAGE_TEXTURES+i]=(VkDescriptorImageInfo) {
+    for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        set_write_image_info[IMAGE_TEXTURES + i] = (VkDescriptorImageInfo){
             .sampler = render_data->buf_obuffers[render_index_t[i]].color.sampler,
             .imageView = render_data->buf_obuffers[render_index_t[i]].color.view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
-    set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS]=(VkDescriptorImageInfo) {
-            .sampler = render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].sampler,
-            .imageView = render_data->images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].view,
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
+    set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS] = (VkDescriptorImageInfo){
+        .sampler = render_data->images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS].sampler,
+        .imageView = render_data->images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS].view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
 
     VkWriteDescriptorSet set_write[3] = {
-        [0]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data->buf_desc_set[buffer_index],
-            .dstBinding = 0,
-            .descriptorCount = IMAGE_TEXTURES,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[0],
-        },
-        [1]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data->buf_desc_set[buffer_index],
-            .dstBinding = IMAGE_TEXTURES,
-            .descriptorCount = OFFSCREEN_BUFFERS,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
-        },
-        [2]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data->buf_desc_set[buffer_index],
-            .dstBinding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
-            .descriptorCount = iKeyboard,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],
-        },
+        [0] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data->buf_desc_set[buffer_index],
+                .dstBinding = 0,
+                .descriptorCount = IMAGE_TEXTURES,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[0],
+            },
+        [1] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data->buf_desc_set[buffer_index],
+                .dstBinding = IMAGE_TEXTURES,
+                .descriptorCount = OFFSCREEN_BUFFERS,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
+            },
+        [2] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data->buf_desc_set[buffer_index],
+                .dstBinding = IMAGE_TEXTURES + OFFSCREEN_BUFFERS,
+                .descriptorCount = iKeyboard,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
+            },
     };
     vkUpdateDescriptorSets(dev->device, 3, set_write, 0, NULL);
 
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            render_data->buf_layout[buffer_index].pipeline_layout, 0, 1, &render_data->buf_desc_set[buffer_index], 0, NULL);
+                            render_data->buf_layout[buffer_index].pipeline_layout, 0, 1,
+                            &render_data->buf_desc_set[buffer_index], 0, NULL);
     VkDeviceSize vertices_offset = 0;
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &render_data->buffers[BUFFER_VERTICES].buffer, &vertices_offset);
     vkCmdBindIndexBuffer(cmd_buffer, render_data->buffers[BUFFER_INDICES].buffer, 0, VK_INDEX_TYPE_UINT16);
@@ -951,26 +1072,30 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
     VkViewport viewport = {
         .x = 0,
         .y = 0,
-        .width = render_data->buf_obuffers[render_index+buffer_index*2].surface_size.width,
-        .height = render_data->buf_obuffers[render_index+buffer_index*2].surface_size.height,
+        .width = render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.width,
+        .height = render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.height,
         .minDepth = 0,
         .maxDepth = 1,
     };
     vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
-        .offset = { .x = 0, .y = 0, },
-        .extent = render_data->buf_obuffers[render_index+buffer_index*2].surface_size,
+        .offset =
+            {
+                .x = 0,
+                .y = 0,
+            },
+        .extent = render_data->buf_obuffers[render_index + buffer_index * 2].surface_size,
     };
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
-    vkCmdPushConstants(cmd_buffer, render_data->buf_layout[buffer_index].pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                       sizeof render_data->push_constants, &render_data->push_constants);
+    vkCmdPushConstants(cmd_buffer, render_data->buf_layout[buffer_index].pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof render_data->push_constants, &render_data->push_constants);
 
     vkCmdDrawIndexed(cmd_buffer, 4, 1, 0, 0, 0);
     vkCmdEndRenderPass(cmd_buffer);
 
-    image_barrier = (VkImageMemoryBarrier) {
+    image_barrier = (VkImageMemoryBarrier){
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
@@ -978,54 +1103,46 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
         .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = render_data->buf_obuffers[render_index+buffer_index*2].color.image,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
+        .image = render_data->buf_obuffers[render_index + buffer_index * 2].color.image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 
-    vkCmdPipelineBarrier(cmd_buffer,
-                         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                         0,
-                         0, NULL,
-                         0, NULL,
-                         1, &image_barrier);
-#if defined(ONE_CMD)
-    if((use_one_VkQueue)||((!use_one_VkQueue)&&(buffer_index==OFFSCREEN_BUFFERS-1)))
-#endif
-    {
-        vkEndCommandBuffer(cmd_buffer);
-    }
+    vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
+                         NULL, 0, NULL, 1, &image_barrier);
+    vkEndCommandBuffer(cmd_buffer);
     return true;
 }
 
-static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window)
+static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                             struct app_os_window *os_window)
 {
-    static int render_index=0;
+    static int render_index = 0;
     int res;
     vk_error retval = VK_ERROR_NONE;
 
     set_push_constants(os_window);
-    if(!update_iKeyboard_texture(phy_dev, dev, &essentials, &render_data))
+    if (!update_iKeyboard_texture(phy_dev, dev, &essentials, &render_data))
         return false;
 
-    for(int i=0; i<OFFSCREEN_BUFFERS; i++) {
-        if (!render_loop_buf(phy_dev, dev, &essentials, &render_data, offscreen_cmd_buffer[i], render_index, i, &os_window->app_data)) {
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        if (!render_loop_buf(phy_dev, dev, &essentials, &render_data, offscreen_cmd_buffer[i], render_index, i,
+                             &os_window->app_data))
+        {
             printf("Error on rendering buffers \n");
             return false;
         }
         update_push_constants_window_size(os_window);
 
-#if defined(ONE_CMD)
-        if(((i==0)&&(use_one_VkQueue))||(((!use_one_VkQueue)&&(i==OFFSCREEN_BUFFERS-1)))) { //wait main screen, or Queue all if only one VKQueue
-#else
-        if(i==0) { //wait main screen, or Queue all if only one VKQueue
-#endif
+        if (i == 0)
+        { // wait main screen
             if (!first_submission)
             {
                 res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
@@ -1040,7 +1157,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
             VkPipelineStageFlags wait_sem_stages[1] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
             VkSubmitInfo submit_info = {
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                .waitSemaphoreCount = first_submission?0:1,
+                .waitSemaphoreCount = first_submission ? 0 : 1,
                 .pWaitSemaphores = &wait_main_sem,
                 .pWaitDstStageMask = wait_sem_stages,
                 .commandBufferCount = 1,
@@ -1058,11 +1175,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
             vkQueueSubmit(offscreen_queue[i], 1, &submit_info, offscreen_fence);
             first_submission = false;
         }
-        else 
-#if defined(ONE_CMD)
-        if(use_one_VkQueue)
-#endif
-        { //wait last buf/shader in loop, if multi VkQueue supported
+        else
+        { // wait last buf/shader in loop, if multi VkQueue supported
             res = vkWaitForFences(dev->device, 1, &offscreen_fence, true, 1000000000);
             vk_error_set_vkresult(&retval, res);
             if (res)
@@ -1080,7 +1194,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
                 .commandBufferCount = 1,
                 .pCommandBuffers = &offscreen_cmd_buffer[i],
                 .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &wait_main_sem, //used main sem
+                .pSignalSemaphores = &wait_main_sem, // used main sem
             };
             res = vkResetFences(dev->device, 1, &offscreen_fence);
             vk_error_set_vkresult(&retval, res);
@@ -1090,29 +1204,57 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
                 return false;
             }
             vkQueueSubmit(offscreen_queue[i], 1, &submit_info, offscreen_fence);
-            VkSemaphore tmp_sem=wait_buf_sem;
-            wait_buf_sem=wait_main_sem;
-            wait_main_sem=tmp_sem;
+            VkSemaphore tmp_sem = wait_buf_sem;
+            wait_buf_sem = wait_main_sem;
+            wait_main_sem = tmp_sem;
         }
     }
 
     uint32_t image_index;
 
     res = vk_render_start(&essentials, dev, swapchain, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &image_index);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        os_window->resize_event = true;
+        res = 0;
+        first_submission = true;
+        return true;
+    }
+    else if (res == VK_ERROR_SURFACE_LOST_KHR)
+    {
+        vkDestroySurfaceKHR(vk, swapchain->surface, NULL);
+        VkResult tres;
+        tres = vk_create_surface(vk, swapchain, os_window);
+        vk_error_set_vkresult(&retval, tres);
+        if (tres)
+            return false;
+        os_window->resize_event = true;
+        res = 0;
+        first_submission = true;
+        return true;
+    }
     if (res)
         return false;
 
     VkClearValue clear_values = {
-        .color = { .float32 = {0.0, 0.0, 0.0, 1.0}, },
+        .color =
+            {
+                .float32 = {0.0, 0.0, 0.0, 1.0},
+            },
     };
     VkRenderPassBeginInfo pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = render_data.main_render_pass,
         .framebuffer = render_data.main_gbuffers[image_index].framebuffer,
-        .renderArea = {
-            .offset = { .x = 0, .y = 0, },
-            .extent = render_data.main_gbuffers[image_index].surface_size,
-        },
+        .renderArea =
+            {
+                .offset =
+                    {
+                        .x = 0,
+                        .y = 0,
+                    },
+                .extent = render_data.main_gbuffers[image_index].surface_size,
+            },
         .clearValueCount = 1,
         .pClearValues = &clear_values,
     };
@@ -1120,58 +1262,62 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vkCmdBeginRenderPass(essentials.cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(essentials.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, render_data.main_pipeline.pipeline);
 
-    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS+iKeyboard] = {0};
-    for(uint32_t i=0; i<IMAGE_TEXTURES; i++) {
-        set_write_image_info[i]=(VkDescriptorImageInfo) {
+    VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard] = {0};
+    for (uint32_t i = 0; i < IMAGE_TEXTURES; i++)
+    {
+        set_write_image_info[i] = (VkDescriptorImageInfo){
             .sampler = render_data.images[i].sampler,
-             .imageView = render_data.images[i].view,
-              .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView = render_data.images[i].view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
-    for(uint32_t i=0; i<OFFSCREEN_BUFFERS; i++) {
-        set_write_image_info[IMAGE_TEXTURES+i]=(VkDescriptorImageInfo) {
-            .sampler = render_data.buf_obuffers[i*2+render_index].color.sampler,
-             .imageView = render_data.buf_obuffers[i*2+render_index].color.view,
-              .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        set_write_image_info[IMAGE_TEXTURES + i] = (VkDescriptorImageInfo){
+            .sampler = render_data.buf_obuffers[i * 2 + render_index].color.sampler,
+            .imageView = render_data.buf_obuffers[i * 2 + render_index].color.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
-    set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS]=(VkDescriptorImageInfo) {
-            .sampler = render_data.images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].sampler,
-             .imageView = render_data.images[IMAGE_TEXTURES+OFFSCREEN_BUFFERS].view,
-              .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
+    set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS] = (VkDescriptorImageInfo){
+        .sampler = render_data.images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS].sampler,
+        .imageView = render_data.images[IMAGE_TEXTURES + OFFSCREEN_BUFFERS].view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
 
     VkWriteDescriptorSet set_write[3] = {
-        [0]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data.main_desc_set,
-            .dstBinding = 0,
-            .descriptorCount = IMAGE_TEXTURES,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[0],
-        },
-        [1]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data.main_desc_set,
-            .dstBinding = IMAGE_TEXTURES,
-            .descriptorCount = OFFSCREEN_BUFFERS,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
-        },
-        [2]={
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = render_data.main_desc_set,
-            .dstBinding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS,
-            .descriptorCount = iKeyboard,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &set_write_image_info[IMAGE_TEXTURES+OFFSCREEN_BUFFERS],
-        },
+        [0] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data.main_desc_set,
+                .dstBinding = 0,
+                .descriptorCount = IMAGE_TEXTURES,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[0],
+            },
+        [1] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data.main_desc_set,
+                .dstBinding = IMAGE_TEXTURES,
+                .descriptorCount = OFFSCREEN_BUFFERS,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
+            },
+        [2] =
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = render_data.main_desc_set,
+                .dstBinding = IMAGE_TEXTURES + OFFSCREEN_BUFFERS,
+                .descriptorCount = iKeyboard,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
+            },
     };
     vkUpdateDescriptorSets(dev->device, 3, set_write, 0, NULL);
 
     vkCmdBindDescriptorSets(essentials.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             render_data.main_layout.pipeline_layout, 0, 1, &render_data.main_desc_set, 0, NULL);
-
 
     VkDeviceSize vertices_offset = 0;
     vkCmdBindVertexBuffers(essentials.cmd_buffer, 0, 1, &render_data.buffers[BUFFER_VERTICES].buffer, &vertices_offset);
@@ -1188,7 +1334,11 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vkCmdSetViewport(essentials.cmd_buffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
-        .offset = { .x = 0, .y = 0, },
+        .offset =
+            {
+                .x = 0,
+                .y = 0,
+            },
         .extent = render_data.main_gbuffers[image_index].surface_size,
     };
     vkCmdSetScissor(essentials.cmd_buffer, 0, 1, &scissor);
@@ -1196,114 +1346,161 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vkCmdPushConstants(essentials.cmd_buffer, render_data.main_layout.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                        sizeof render_data.push_constants, &render_data.push_constants);
 
-    //vkCmdDraw(essentials.cmd_buffer, 4, 1, 0, 0);
+    // vkCmdDraw(essentials.cmd_buffer, 4, 1, 0, 0);
     vkCmdDrawIndexed(essentials.cmd_buffer, 4, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(essentials.cmd_buffer);
 
-    res = vk_render_finish(&essentials, dev, swapchain, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, image_index, wait_buf_sem, wait_main_sem);
+    res = vk_render_finish(&essentials, dev, swapchain, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, image_index,
+                           wait_buf_sem, wait_main_sem);
 
-    if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-        os_window->resize_event=true;
+    if (res == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        os_window->resize_event = true;
         res = 0;
-    } else if (res == VK_ERROR_SURFACE_LOST_KHR) {
+    }
+    else if (res == VK_ERROR_SURFACE_LOST_KHR)
+    {
         vkDestroySurfaceKHR(vk, swapchain->surface, NULL);
         VkResult tres;
-        tres=vk_create_surface(vk, swapchain, os_window);
+        tres = vk_create_surface(vk, swapchain, os_window);
         vk_error_set_vkresult(&retval, tres);
         if (tres)
             return false;
-        os_window->resize_event=true;
+        os_window->resize_event = true;
         res = 0;
     }
 
     if (res)
         return false;
 
-    update_params(&os_window->app_data,os_window->fps_lock);
-    render_index=(render_index+1)%2;
-    os_window->pause_refresh=false;
+    update_params(&os_window->app_data, os_window->fps_lock);
+    render_index = (render_index + 1) % 2;
+    os_window->pause_refresh = false;
     return true;
-
 }
 
-void init_win_params(struct app_os_window *os_window) {
-    os_window->app_data.iResolution[0]=1280;
-    os_window->app_data.iResolution[1]=720;
-    os_window->app_data.iFrame=0;
-    os_window->app_data.iMouse[0]=0;
-    os_window->app_data.iMouse[1]=0;
-    os_window->app_data.iMouse_click[0]=false;
-    os_window->app_data.iMouse_click[1]=false;
-    os_window->app_data.iMouse_lclick[0]=0;
-    os_window->app_data.iMouse_lclick[1]=0;
-    os_window->app_data.iTime=0;
-    os_window->app_data.pause=false;
-    os_window->app_data.quit=false;
-    os_window->app_data.drawdebug=false;
-    os_window->fps_lock=false;
-    os_window->is_minimized=false;
-    os_window->prepared=false;
-    os_window->resize_event=false;
-    os_window->reload_shaders_on_resize=false;
-    os_window->print_debug=false;
-    os_window->pause_refresh=false;
+void init_win_params(struct app_os_window *os_window)
+{
+    os_window->app_data.iResolution[0] = 1280;
+    os_window->app_data.iResolution[1] = 720;
+    os_window->app_data.iFrame = 0;
+    os_window->app_data.iMouse[0] = 0;
+    os_window->app_data.iMouse[1] = 0;
+    os_window->app_data.iMouse_click[0] = false;
+    os_window->app_data.iMouse_click[1] = false;
+    os_window->app_data.iMouse_lclick[0] = 0;
+    os_window->app_data.iMouse_lclick[1] = 0;
+    os_window->app_data.iTime = 0;
+    os_window->app_data.pause = false;
+    os_window->app_data.quit = false;
+    os_window->app_data.drawdebug = false;
+    os_window->fps_lock = false;
+    os_window->is_minimized = false;
+    os_window->prepared = false;
+    os_window->resize_event = false;
+    os_window->resize_xcb_event = false;
+    os_window->reload_shaders_on_resize = false;
+    os_window->print_debug = false;
+    os_window->pause_refresh = false;
     strncpy(os_window->name, "Vulkan Shadertoy launcher | twitter.com/AruGL", APP_NAME_STR_LEN);
 }
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
-static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain, struct app_os_window *os_window)
+static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                            struct app_os_window *os_window)
 {
+    static bool resize_xcb_event_last = false;
     while (!os_window->app_data.quit)
     {
         update_keypress();
         xcb_generic_event_t *event;
-        if (os_window->app_data.pause) {
+        if (os_window->app_data.pause)
+        {
             event = xcb_wait_for_event(os_window->connection);
         }
-        else {
+        else
+        {
             event = xcb_poll_for_event(os_window->connection);
         }
         // a workaround for repeated key events
         // save original state of each modifyed button and check if it was modifyed twice
-        bool save_map[0xff+1][3]={0};
-        bool state_map[0xff+1][2]={0};
-        
-        while (event) {
+        bool save_map[0xff + 1][3] = {0};
+        bool state_map[0xff + 1][2] = {0};
+        os_window->resize_xcb_event = false;
+        while (event)
+        {
             app_handle_xcb_event(os_window, event, save_map, state_map);
             free(event);
             event = xcb_poll_for_event(os_window->connection);
         }
-        if(keyboard_need_update){
-            for(int i=0;i<0xff;i++){
-                if((state_map[i][0])&&(state_map[i][1])){
-                    update_key_map(i,0,save_map[i][0]);
-                    update_key_map(i,1,save_map[i][1]);
-                    update_key_map(i,2,save_map[i][2]);
+
+        // try to dodge X11 bug, resizing only by Vulkan event and only next frame after XCB resize event (it still
+        // happens but less) https://github.com/KhronosGroup/Vulkan-Samples/issues/250
+        bool last_resize_tmp = os_window->resize_xcb_event;
+        if ((os_window->resize_xcb_event) || (resize_xcb_event_last))
+        {
+            os_window->resize_xcb_event = true;
+        }
+        if ((!last_resize_tmp) && (resize_xcb_event_last))
+        {
+            resize_xcb_event_last = false;
+        }
+        else
+        {
+            resize_xcb_event_last = true;
+        }
+
+        if (keyboard_need_update)
+        {
+            for (int i = 0; i < 0xff; i++)
+            {
+                if ((state_map[i][0]) && (state_map[i][1]))
+                {
+                    update_key_map(i, 0, save_map[i][0]);
+                    update_key_map(i, 1, save_map[i][1]);
+                    update_key_map(i, 2, save_map[i][2]);
                 }
             }
         }
         check_hotkeys(os_window);
-        if((!os_window->is_minimized)&&(!os_window->resize_event)) {
-            if(!os_window->app_data.quit) {
-                os_window->app_data.quit=!render_loop_draw(phy_dev, dev, swapchain, os_window);
+        if ((!os_window->is_minimized) && (!os_window->resize_event))
+        {
+            if (!os_window->app_data.quit)
+            {
+                os_window->app_data.quit = !render_loop_draw(phy_dev, dev, swapchain, os_window);
             }
-            else break;
+            else
+                break;
         }
-        else {
-            if((!os_window->is_minimized)&&os_window->resize_event) {
-                on_window_resize(phy_dev, dev, &essentials, swapchain, &render_data, os_window); //execute draw or resize per frame, not together
+        else
+        {
+            if ((!os_window->is_minimized) && os_window->resize_event)
+            {
+                // try to dodge X11 bug, resizing only by Vulkan event and only next frame after XCB resize event (it
+                // still happens but less) https://github.com/KhronosGroup/Vulkan-Samples/issues/250
+                if (!os_window->resize_xcb_event)
+                {
+                    on_window_resize(phy_dev, dev, &essentials, swapchain, &render_data,
+                                     os_window); // execute draw or resize per frame, not together
+                }
+                else
+                {
+                    sleep_ms(16);
+                }
             }
         }
-        if(os_window->is_minimized) { //I do not delete everything on minimize, only stop rendering
-            sleep_ms(10);
+        if (os_window->is_minimized)
+        { // I do not delete everything on minimize, only stop rendering
+            sleep_ms(16);
         }
     }
     exit_cleanup_render_loop(dev, &essentials, &render_data, wait_buf_sem, wait_main_sem, offscreen_fence);
 }
 #endif
 
-void print_usage(char *name) {
+void print_usage(char *name)
+{
     printf("Usage: %s \n"
            "\t[--present_mode <present mode enum>]\n"
            "\t <present_mode_enum>\tVK_PRESENT_MODE_IMMEDIATE_KHR = %d\n"
@@ -1312,14 +1509,15 @@ void print_usage(char *name) {
            "\t\t\t\tVK_PRESENT_MODE_FIFO_RELAXED_KHR = %d\n"
            "\t[--debug]\n"
            "\t[--reload_shaders] will reload shaders form file on resize\n"
-           "Control: Keyboard 1-debug, 2-vsynk 60fps, Space-pause\n", name,
-           VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR,
-           VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+           "Control: Keyboard 1-debug, 2-vsynk 60fps, Space-pause\n",
+           name, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_KHR,
+           VK_PRESENT_MODE_FIFO_RELAXED_KHR);
 }
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
+{
     MSG msg;
     bool done;
     int argc;
@@ -1328,39 +1526,47 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     msg.wParam = 0;
 
     LPWSTR *commandLineArgs = CommandLineToArgvW(GetCommandLineW(), &argc);
-    if (NULL == commandLineArgs) {
+    if (NULL == commandLineArgs)
+    {
         argc = 0;
     }
 
-    if (argc > 0) {
+    if (argc > 0)
+    {
         argv = (char **)malloc(sizeof(char *) * argc);
-        if (argv == NULL) {
+        if (argv == NULL)
+        {
             argc = 0;
         }
-        else {
-            for (int iii = 0; iii < argc; iii++) {
+        else
+        {
+            for (int iii = 0; iii < argc; iii++)
+            {
                 size_t wideCharLen = wcslen(commandLineArgs[iii]);
                 size_t numConverted = 0;
 
                 argv[iii] = (char *)malloc(sizeof(char) * (wideCharLen + 1));
-                if (argv[iii] != NULL) {
+                if (argv[iii] != NULL)
+                {
                     wcstombs_s(&numConverted, argv[iii], wideCharLen + 1, commandLineArgs[iii], wideCharLen + 1);
                 }
             }
         }
     }
-    else {
+    else
+    {
         argv = NULL;
     }
 
-    vk_error res =VK_ERROR_NONE;
+    vk_error res = VK_ERROR_NONE;
     int retval = EXIT_FAILURE;
 
     init_win_params(&os_window);
     uint32_t dev_count = 1;
     os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-    if(argc>1) {
+    if (argc > 1)
+    {
         if (strcmp(argv[1], "--help") == 0)
         {
             SetStdOutToNewConsole();
@@ -1370,34 +1576,40 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
         }
     }
 
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1)) {
+    for (int i = 1; i < argc; i++)
+    {
+        if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1))
+        {
             os_window.present_mode = atoi(argv[i + 1]);
             i++;
             continue;
         }
         if (strcmp(argv[i], "--debug") == 0)
         {
-            os_window.print_debug=true;
+            os_window.print_debug = true;
             continue;
         }
         if (strcmp(argv[i], "--reload_shaders") == 0)
         {
-            os_window.reload_shaders_on_resize=true;
+            os_window.reload_shaders_on_resize = true;
             continue;
         }
     }
 
-    if (argc > 0 && argv != NULL) {
-        for (int iii = 0; iii < argc; iii++) {
-            if (argv[iii] != NULL) {
+    if (argc > 0 && argv != NULL)
+    {
+        for (int iii = 0; iii < argc; iii++)
+        {
+            if (argv[iii] != NULL)
+            {
                 free(argv[iii]);
             }
         }
         free(argv);
     }
 
-    if(os_window.print_debug) {
+    if (os_window.print_debug)
+    {
         SetStdOutToNewConsole();
     }
 
@@ -1425,11 +1637,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
         return retval;
     }
 
-#if defined(ONE_CMD)
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //1 main 1 offscreen cmd
-#else
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 1+OFFSCREEN_BUFFERS); //cmd buffers alloc
-#endif
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT,
+                   1 + OFFSCREEN_BUFFERS); // using number of command buffers equal to offscreen buffers
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
@@ -1451,9 +1660,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
 
     render_loop_init(&phy_dev, &dev, &swapchain, &os_window);
     done = false;
-    while (!done) {
-        PeekMessage(&msg,0,0,0,PM_REMOVE);
-        process_msg(&msg,&done);
+    while (!done)
+    {
+        PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
+        process_msg(&msg, &done);
         RedrawWindow(os_window.window, NULL, NULL, RDW_INTERNALPAINT);
     }
 
@@ -1478,7 +1688,8 @@ int main(int argc, char **argv)
     uint32_t dev_count = 1;
     os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-    if(argc>1) {
+    if (argc > 1)
+    {
         if (strcmp(argv[1], "--help") == 0)
         {
             print_usage(argv[0]);
@@ -1486,20 +1697,22 @@ int main(int argc, char **argv)
         }
     }
 
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1)) {
+    for (int i = 1; i < argc; i++)
+    {
+        if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1))
+        {
             os_window.present_mode = atoi(argv[i + 1]);
             i++;
             continue;
         }
         if (strcmp(argv[i], "--debug") == 0)
         {
-            os_window.print_debug=true;
+            os_window.print_debug = true;
             continue;
         }
         if (strcmp(argv[i], "--reload_shaders") == 0)
         {
-            os_window.reload_shaders_on_resize=true;
+            os_window.reload_shaders_on_resize = true;
             continue;
         }
     }
@@ -1528,11 +1741,7 @@ int main(int argc, char **argv)
         return retval;
     }
 
-#if defined(ONE_CMD)
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 2); //1 main 1 offscreen cmd
-#else
-    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 1+OFFSCREEN_BUFFERS); //cmd buffers alloc
-#endif
+    res = vk_setup(&phy_dev, &dev, VK_QUEUE_GRAPHICS_BIT, 1 + OFFSCREEN_BUFFERS); // cmd buffers alloc
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
@@ -1544,7 +1753,6 @@ int main(int argc, char **argv)
     printf("Init XCB\n");
     app_init_connection(&os_window);
     app_create_xcb_window(&os_window);
-
 
     swapchain.swapchain = VK_NULL_HANDLE;
     res = vk_get_swapchain(vk, &phy_dev, &dev, &swapchain, &os_window, 1, &os_window.present_mode);

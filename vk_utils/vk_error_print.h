@@ -22,7 +22,7 @@ enum vk_error_type
 {
     VK_ERROR_SUCCESS = 0,
     VK_ERROR_VKRESULT,
-    VK_ERROR_VKRESULT_WARNING,  /* VK_INCOMPLETE for example */
+    VK_ERROR_VKRESULT_WARNING,
     VK_ERROR_ERRNO,
 };
 

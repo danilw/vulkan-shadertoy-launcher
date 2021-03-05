@@ -107,17 +107,17 @@ static void app_handle_xcb_event(struct app_os_window *os_window, const xcb_gene
         printf ("Button %d released in window %ld, at coordinates (%d,%d)\n",
         ev->detail, ev->event, ev->event_x, ev->event_y);*/
     } break;
-
+    
     case XCB_CONFIGURE_NOTIFY: {
         const xcb_configure_notify_event_t *cfg = (const xcb_configure_notify_event_t *)event;
         if ((os_window->app_data.iResolution[0] != cfg->width) || (os_window->app_data.iResolution[1] != cfg->height)) {
             os_window->is_minimized = false;
             os_window->app_data.iResolution[0] = cfg->width;
             os_window->app_data.iResolution[1] = cfg->height;
-            if((os_window->app_data.iResolution[0]==0)||(os_window->app_data.iResolution[1]==0)){
+            if((os_window->app_data.iResolution[0]<=1)||(os_window->app_data.iResolution[1]<=1)){
                 os_window->is_minimized = true;
             }else{
-                os_window->resize_event=true;
+                os_window->resize_xcb_event=true;
             }
         }
     } break;

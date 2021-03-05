@@ -14,7 +14,7 @@ layout (set = 0, binding = IMAGE_TEXTURES) uniform sampler2D iChannels[OFFSCREEN
 layout (set = 0, binding = IMAGE_TEXTURES+OFFSCREEN_BUFFERS) uniform sampler2D iKeyboard; //keyboard
 
 //define in any order
-#define iChannel0 iKeyboard
+#define iChannel0 iChannels[0]
 #define iChannel1 iChannels[1]
 #define iChannel2 iChannels[2]
 #define iChannel3 iChannels[3]
@@ -43,6 +43,7 @@ bool is_pause=constants.u_pause;
 
 layout (location = 0) out vec4 out_color;
 
+#include "../shadertoy/common.glsl"
 #include "../shadertoy/main_image.glsl"
 
 void main()

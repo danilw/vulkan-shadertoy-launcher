@@ -195,6 +195,7 @@ struct app_os_window {
     xcb_screen_t *screen;
     xcb_window_t xcb_window;
     xcb_intern_atom_reply_t *atom_wm_delete_window;
+    bool resize_xcb_event;
 #endif
     char name[APP_NAME_STR_LEN];
     

@@ -1,0 +1,9 @@
+################################################################################
+# from <VulkanSDK>/config/vk_layer_settings.txt
+################################################################################
+
+# VK_LAYER_KHRONOS_validation Settings
+khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG
+khronos_validation.report_flags = error,warn,perf
+# khronos_validation.log_filename = stdout
+khronos_validation.log_filename = vk_layer_log.txt

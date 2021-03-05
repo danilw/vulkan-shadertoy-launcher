@@ -75,7 +75,7 @@ void vk_render_cleanup_essentials(struct vk_render_essentials *essentials, struc
     free(essentials->images);
 }
 
-int vk_render_start(struct vk_render_essentials *essentials, struct vk_device *dev,
+VkResult vk_render_start(struct vk_render_essentials *essentials, struct vk_device *dev,
         struct vk_swapchain *swapchain, VkImageLayout to_layout, uint32_t *image_index)
 {
     vk_error retval = VK_ERROR_NONE;
@@ -86,15 +86,19 @@ int vk_render_start(struct vk_render_essentials *essentials, struct vk_device *d
     if (res == VK_TIMEOUT)
     {
         printf("A whole second and no image.  I give up.\n");
-        return -1;
+        return res;
     }
     else if (res == VK_SUBOPTIMAL_KHR)
         printf("Did you change the window size?  I didn't recreate the swapchains,\n"
                 "so the presentation is now suboptimal.\n");
+    else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+      // this is not error, this is resize event for AMD hardware
+      return res;
+    }
     else if (res < 0)
     {
         vk_error_printf(&retval, "Couldn't acquire image\n");
-        return -1;
+        return res;
     }
 
     if (!essentials->first_render)
@@ -104,7 +108,7 @@ int vk_render_start(struct vk_render_essentials *essentials, struct vk_device *d
         if (res)
         {
             vk_error_printf(&retval, "Wait for fence failed\n");
-            return -1;
+            return res;
         }
     }
     essentials->first_render = false;
@@ -119,7 +123,7 @@ int vk_render_start(struct vk_render_essentials *essentials, struct vk_device *d
     if (res)
     {
         vk_error_printf(&retval, "Couldn't even begin recording a command buffer\n");
-        return -1;
+        return res;
     }
 
     VkImageMemoryBarrier image_barrier = {

@@ -28,6 +28,7 @@ static vk_error init_texture_mem(struct vk_physical_device *phy_dev, struct vk_d
     return retval;
 }
 
+#ifdef USE_stb_image
 static vk_error init_texture_file(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,
                              struct vk_image *image, const char *name, bool mipmaps)
 {
@@ -45,15 +46,16 @@ static vk_error init_texture_file(struct vk_physical_device *phy_dev, struct vk_
     stbi_image_free(generated_texture);
     return retval;
 }
+#endif
 
-static vk_error texture_empty(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials,struct vk_image *image,int width,int height)
+static vk_error texture_empty(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_render_essentials *essentials, struct vk_image *image, int width, int height)
 {
     vk_error retval = VK_ERROR_NONE;
     size_t texture_size = width * height * 4 * sizeof(uint8_t);
     uint8_t *generated_texture = malloc(texture_size);
     if(generated_texture == NULL) {
         retval.error.type=VK_ERROR_ERRNO;
-        printf("Error in loading image\n");
+        printf("Error in allocating memory\n");
         return retval;
     }
     for (unsigned int i = 0; i < height; ++i){

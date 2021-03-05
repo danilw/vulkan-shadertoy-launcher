@@ -43,6 +43,7 @@ bool is_pause=constants.u_pause;
 
 layout (location = 0) out vec4 out_color;
 
+#include "../shadertoy/common.glsl"
 #include "../shadertoy/buf2.glsl"
 
 void main()
