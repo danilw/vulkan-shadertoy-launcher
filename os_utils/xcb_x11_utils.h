@@ -99,7 +99,7 @@ static void app_handle_xcb_event(struct app_os_window *os_window, const xcb_gene
         case 3:
             os_window->app_data.iMouse_click[1] = false;
             os_window->app_data.iMouse_rclick[0] = -os_window->app_data.iMouse_rclick[0];
-            os_window->app_data.iMouse_rclick[1] = -os_window->app_data.iMouse_rclick[0];
+            os_window->app_data.iMouse_rclick[1] = -os_window->app_data.iMouse_rclick[1];
             break;
         }
         /*print_modifiers(ev->state);
@@ -282,7 +282,7 @@ static uint8_t check_num(bool nmod,uint8_t key){
 // example where first(main) key is <@> and only second is <2>, I expect that keyboard has first(main) key is <2>
 static void gen_key_map(xcb_connection_t* connection){
     xcb_key_symbols_t* keySymbols = xcb_key_symbols_alloc(connection);
-    xcb_keycode_t* keycode=(uint32_t)0;
+    xcb_keycode_t* keycode=NULL;
     
     keycode=xcb_key_symbols_get_keycode(keySymbols, XK_A);
     if(keycode)local_k_map[(uint8_t)max(min(keycode[0],0xff),0)]=Key_A;

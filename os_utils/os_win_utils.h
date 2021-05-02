@@ -75,6 +75,21 @@ void process_msg(MSG *msg, bool *done){
             }
         }
     }
+    if(!os_window.app_data.iMouse_click[1]&&(!mouse_click[1])){
+        
+    }else{
+        if(os_window.app_data.iMouse_click[1]&&(!mouse_click[1])){
+            mouse_click[1]=true;
+            os_window.app_data.iMouse_rclick[0]=os_window.app_data.iMouse[0];
+            os_window.app_data.iMouse_rclick[1]=os_window.app_data.iMouse[1];
+        }else{
+            if(!os_window.app_data.iMouse_click[1]&&(mouse_click[1])){
+                mouse_click[1]=false;
+                os_window.app_data.iMouse_rclick[0]=-abs(os_window.app_data.iMouse_rclick[0]);
+                os_window.app_data.iMouse_rclick[1]=-abs(os_window.app_data.iMouse_rclick[1]);
+            }
+        }
+    }
     
 }
 
