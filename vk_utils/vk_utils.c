@@ -1,5 +1,5 @@
 
-// Danil, 2020 Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
+// Danil, 2021+ Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
 // The MIT License
 
 #include "vk_utils.h"
@@ -342,6 +342,15 @@ VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct
     createInfo.window = os_window->xcb_window;
     
     res = vkCreateXcbSurfaceKHR(vk, &createInfo, NULL, &swapchain->surface);
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    VkWaylandSurfaceCreateInfoKHR createInfo;
+    createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+    createInfo.pNext = NULL;
+    createInfo.flags = 0;
+    createInfo.display = os_window->display;
+    createInfo.surface = os_window->surface;
+
+    res = vkCreateWaylandSurfaceKHR(vk, &createInfo, NULL, &swapchain->surface);
 #endif
     return res;
 }

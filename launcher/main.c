@@ -1,7 +1,8 @@
-// Danil, 2020 Vulkan shadertoy launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
+// Danil, 2021+ Vulkan shadertoy launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
 
 #include <stdio.h>
 #include <stdlib.h>
+
 
 // USEFUL defines (list, use search to see what they do)
 
@@ -11,13 +12,12 @@
 // OFFSCREEN_BUFFERS
 // IMAGE_TEXTURES
 // USE_MIPMAPS
-// buffers are VK_FORMAT_R32G32B32A32_SFLOAT
+// YARIV_SHADER
+// buffers is VK_FORMAT_R32G32B32A32_SFLOAT
 
-// TODO features
-// wayland
-// build in shader and yariv
-// tile render
-// rendering frames to video
+// FPS_LOCK(30) hotkey function 30 FPS lock (no Vsync)
+// check_hotkeys function where hotkeys defined
+
 
 // define to not resize offscreen-buf on window resize (buffer size will be same as window on startup)
 // #define NO_RESIZE_BUF
@@ -25,7 +25,7 @@
 // if you need custom static buffer size (iResolution unique to each buffer and will be equal to this value in buffers)
 // #define CUSTOM_BUF_SIZE {.width = 256, .height = 256,}
 
-#if defined(VK_USE_PLATFORM_XCB_KHR)
+#if defined(VK_USE_PLATFORM_XCB_KHR)||defined(VK_USE_PLATFORM_WAYLAND_KHR)
 #include <unistd.h>
 #endif
 
@@ -38,22 +38,25 @@
 #include "../vk_utils/vk_render_helper.h"
 #include "../os_utils/utils.h"
 
-// remove this define to NOT use stb_image.h (compiled size will 50Kb smaller)
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+static int resize_size[2] = {1280, 720}; // in Wayland surface should set own size
+#endif
+
+// USE_stb_image this define to NOT use stb_image.h (compiled size will be 15Kb smaller)
 // when stb_image.h not used - every image is empty(vec4(0.0)) 1x1 pixel look textures.h texture_empty
-#define USE_stb_image
+//#define USE_stb_image
 
 #ifdef USE_stb_image
 // using stb_image
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_THREAD_LOCALS
+#define STBI_ONLY_PNG
 #include "stb_image.h"
 #endif
 
 // numbers buffers <*.frag> files
 // number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
-// names shaders/spv/<file>.spv look files names in that foldred
-// binding order: look vk_make_graphics_layouts() first images then uniforms(not used(using push_const instead of
-// uniforms))
+// names shaders/spv/<file>.spv look files names in that folder
 #define OFFSCREEN_BUFFERS 4
 
 // number of images(>0)
@@ -74,6 +77,40 @@ static bool last_iMousel_clicked[2] = {false, false};
 
 // do not edit, it just to see where keyboard texture used
 #define iKeyboard 1
+
+// to build-in compressed shaders into bin(exe) file
+// used OFFSCREEN_BUFFERS size, names of .hex files should be set manually(and edit yariv_shaders[]), this example using 4 buffers same as on shadertoy
+//#define YARIV_SHADER
+
+#ifdef YARIV_SHADER
+const unsigned char buf_fs_code[] = {
+#include "../yariv_shaders/bin/buf.frag.hex"
+};
+const unsigned char buf1_fs_code[] = {
+#include "../yariv_shaders/bin/buf1.frag.hex"
+};
+const unsigned char buf2_fs_code[] = {
+#include "../yariv_shaders/bin/buf2.frag.hex"
+};
+const unsigned char buf3_fs_code[] = {
+#include "../yariv_shaders/bin/buf3.frag.hex"
+};
+const unsigned char buf_vs_code[] = {
+#include "../yariv_shaders/bin/buf.vert.hex"
+};
+const unsigned char fs_code[] = {
+#include "../yariv_shaders/bin/main.frag.hex"
+};
+const unsigned char vs_code[] = {
+#include "../yariv_shaders/bin/main.vert.hex"
+};
+const unsigned char *yariv_shaders[] = {
+  buf_fs_code, buf1_fs_code, buf2_fs_code, buf3_fs_code
+};
+const int yariv_shaders_size[] = {
+  sizeof(buf_fs_code), sizeof(buf1_fs_code), sizeof(buf2_fs_code), sizeof(buf3_fs_code)
+};
+#endif
 
 struct shaders_push_constants
 {
@@ -163,6 +200,9 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
 static void update_key_map(int w, int h, bool val);
 #include "../os_utils/xcb_x11_utils.h"
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+static void update_key_map(int w, int h, bool val);
+#include "../os_utils/wayland_utils.h"
 #endif
 
 #include "textures.h"
@@ -227,6 +267,23 @@ static void check_hotkeys(struct app_os_window *os_window)
         os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
     if (keyboard_map[Key_1][1])
         os_window->fps_lock = !os_window->fps_lock;
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    const int Key_f = 70;
+    //example resize event for Wayland
+    if (keyboard_map[Key_f][1]){
+        os_window->resize_event = true;
+        static bool switch_res=true;
+        if(switch_res){
+          switch_res=false;
+          os_window->app_data.iResolution[0]=1920;
+          os_window->app_data.iResolution[1]=1080;
+        }else{
+          switch_res=true;
+          os_window->app_data.iResolution[0]=1280;
+          os_window->app_data.iResolution[1]=720;
+        }
+      }
+#endif
 }
 
 static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct vk_device *dev,
@@ -264,19 +321,15 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                 {
                     [0] =
                         (struct vertex){
-                            .pos = {1.0, 1.0, 0.0},
+                            .pos = {3.001, 1.001, 0.0},
                         },
                     [1] =
                         (struct vertex){
-                            .pos = {1.0, -1.0, 0.0},
+                            .pos = {-1.001, -3.001, 0.0},
                         },
                     [2] =
                         (struct vertex){
-                            .pos = {-1.0, 1.0, 0.0},
-                        },
-                    [3] =
-                        (struct vertex){
-                            .pos = {-1.0, -1.0, 0.0},
+                            .pos = {-1.001, 1.001, 0.0},
                         },
                 },
             .indices =
@@ -284,7 +337,6 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                     0,
                     1,
                     2,
-                    3,
                 },
         };
         retval = vk_render_init_buffer(phy_dev, dev, essentials, &render_data->buffers[BUFFER_VERTICES],
@@ -302,11 +354,12 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             sprintf(txt, "textures/%d.png", i + 1);
 #ifdef USE_stb_image
             retval = init_texture_file(phy_dev, dev, essentials, &render_data->images[i], txt, USE_MIPMAPS);
+            if (!vk_error_is_success(&retval))retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i], 1, 1);
 #else
             retval = texture_empty(phy_dev, dev, essentials, &render_data->images[i], 1, 1);
-#endif
             if (!vk_error_is_success(&retval))
                 return retval;
+#endif
         }
         for (uint32_t i = IMAGE_TEXTURES; i < IMAGE_TEXTURES + OFFSCREEN_BUFFERS; i++)
         {
@@ -349,17 +402,59 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
                 .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             };
         }
+#ifdef YARIV_SHADER
+        retval = vk_load_shader_yariv(dev, (const uint32_t *)vs_code, &render_data->shaders[SHADER_MAIN_VERTEX].shader,
+                                      sizeof(vs_code));
+        if (!vk_error_is_success(&retval))
+        {
+            vk_error_printf(&retval, "Could not load the shaders\n");
+            return retval;
+        }
+        retval = vk_load_shader_yariv(dev, (const uint32_t *)fs_code,
+                                      &render_data->shaders[SHADER_MAIN_FRAGMENT].shader, sizeof(fs_code));
+        if (!vk_error_is_success(&retval))
+        {
+            vk_error_printf(&retval, "Could not load the shaders\n");
+            return retval;
+        }
+        for (uint32_t i = 0; i < OFFSCREEN_BUFFERS * 2; i += 2)
+        {
+          retval = vk_load_shader_yariv(dev, (const uint32_t *)buf_vs_code,
+                                        &render_data->shaders[i + 2].shader, sizeof(buf_vs_code));
+          if (!vk_error_is_success(&retval))
+          {
+              vk_error_printf(&retval, "Could not load the shaders\n");
+              return retval;
+          }
+          retval = vk_load_shader_yariv(dev, (const uint32_t *)(yariv_shaders[i/2]),
+                                        &render_data->shaders[i + 2 + 1].shader, yariv_shaders_size[i/2]);
+          if (!vk_error_is_success(&retval))
+          {
+              vk_error_printf(&retval, "Could not load the shaders\n");
+              return retval;
+          }
+        }
+#else
         retval = vk_load_shaders(dev, render_data->shaders, 2 + OFFSCREEN_BUFFERS * 2);
         if (!vk_error_is_success(&retval))
         {
             vk_error_printf(&retval, "Could not load the shaders\n");
             return retval;
         }
+#endif
     }
+    struct VkExtent2D init_size;
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    init_size.width = resize_size[0];
+    init_size.height = resize_size[1];
+#else
+    init_size.width = swapchain->surface_caps.currentExtent.width;
+    init_size.height = swapchain->surface_caps.currentExtent.height;
+#endif
     render_data->main_gbuffers = malloc(essentials->image_count * sizeof *render_data->main_gbuffers);
     for (uint32_t i = 0; i < essentials->image_count; ++i)
         render_data->main_gbuffers[i] = (struct vk_graphics_buffers){
-            .surface_size = swapchain->surface_caps.currentExtent,
+            .surface_size = init_size,
             .swapchain_image = essentials->images[i],
         };
 
@@ -374,7 +469,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #if defined(CUSTOM_BUF_SIZE) && defined(NO_RESIZE_BUF)
                 .surface_size = (struct VkExtent2D)CUSTOM_BUF_SIZE,
 #else
-            .surface_size = swapchain->surface_caps.currentExtent,
+            .surface_size = init_size,
 #endif
             };
 #ifdef NO_RESIZE_BUF
@@ -778,6 +873,17 @@ static void exit_cleanup(VkInstance vk, struct vk_device *dev, struct vk_swapcha
     xcb_destroy_window(os_window->connection, os_window->xcb_window);
     xcb_disconnect(os_window->connection);
     free(os_window->atom_wm_delete_window);
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    xdg_toplevel_destroy(os_window->xdg_toplevel);
+    xdg_surface_destroy(os_window->xdg_surface);
+    wl_keyboard_destroy(os_window->keyboard);
+    wl_pointer_destroy(os_window->pointer);
+    wl_seat_destroy(os_window->seat);
+    wl_surface_destroy(os_window->surface);
+    xdg_wm_base_destroy(os_window->shell);
+    wl_compositor_destroy(os_window->compositor);
+    wl_registry_destroy(os_window->registry);
+    wl_display_disconnect(os_window->display);
 #endif
     vk_exit(vk);
 }
@@ -793,6 +899,11 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
 
     vkDeviceWaitIdle(dev->device);
     os_window->prepared = false;
+    
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    resize_size[0] = os_window->app_data.iResolution[0];
+    resize_size[1] = os_window->app_data.iResolution[1];
+#endif
 
     vk_free_pipelines(dev, &render_data->main_pipeline, 1);
     vk_free_graphics_buffers(dev, render_data->main_gbuffers, essentials->image_count, render_data->main_render_pass);
@@ -835,7 +946,7 @@ void update_params(struct app_data_struct *app_data, bool fps_lock)
 {
     float rdelta = 0;
     if (fps_lock)
-        FPS_LOCK(60);
+        FPS_LOCK(30);
     float delta = update_fps_delta();
     if (!app_data->pause)
     {
@@ -900,13 +1011,13 @@ void update_push_constants_local_size(float width, float height)
         0.5 * height;
     render_data.push_constants.iMouse[2] =
         sign(render_data.push_constants.iMouse[2]) *
-        (((abs(render_data.push_constants.iMouse[2]) / render_data.push_constants.iResolution[1]) -
+        (((fabs(render_data.push_constants.iMouse[2]) / render_data.push_constants.iResolution[1]) -
           0.5 * (render_data.push_constants.iResolution[0] / render_data.push_constants.iResolution[1])) *
              height +
          0.5 * width);
     render_data.push_constants.iMouse[3] =
         sign(render_data.push_constants.iMouse[3]) *
-        (((abs(render_data.push_constants.iMouse[3]) / render_data.push_constants.iResolution[1]) - 0.5) * height +
+        (((fabs(render_data.push_constants.iMouse[3]) / render_data.push_constants.iResolution[1]) - 0.5) * height +
          0.5 * height);
     render_data.push_constants.iResolution[0] = width;
     render_data.push_constants.iResolution[1] = height;
@@ -1384,6 +1495,10 @@ void init_win_params(struct app_os_window *os_window)
 {
     os_window->app_data.iResolution[0] = 1280;
     os_window->app_data.iResolution[1] = 720;
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    resize_size[0] = os_window->app_data.iResolution[0];
+    resize_size[1] = os_window->app_data.iResolution[1];
+#endif
     os_window->app_data.iFrame = 0;
     os_window->app_data.iMouse[0] = 0;
     os_window->app_data.iMouse[1] = 0;
@@ -1399,11 +1514,36 @@ void init_win_params(struct app_os_window *os_window)
     os_window->is_minimized = false;
     os_window->prepared = false;
     os_window->resize_event = false;
-    os_window->resize_xcb_event = false;
     os_window->reload_shaders_on_resize = false;
     os_window->print_debug = false;
     os_window->pause_refresh = false;
-    strncpy(os_window->name, "Vulkan Shadertoy launcher | twitter.com/AruGL", APP_NAME_STR_LEN);
+    strncpy(os_window->name, "Vulkan Shadertoy launcher", APP_NAME_STR_LEN);
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    os_window->connection = NULL;
+    os_window->window = NULL;
+    os_window->minsize.x = 1;
+    os_window->minsize.y = 1;
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+    os_window->resize_xcb_event = false;
+    os_window->atom_wm_delete_window = NULL;
+    os_window->xcb_window = 0;
+    os_window->screen = NULL;
+    os_window->connection = NULL;
+    os_window->display = NULL;
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    os_window->display = NULL;
+    os_window->registry = NULL;
+    os_window->compositor = NULL;
+    os_window->surface = NULL;
+    os_window->shell = NULL;
+    os_window->seat = NULL;
+    os_window->pointer = NULL;
+    os_window->keyboard = NULL;
+    os_window->xdg_surface = NULL;
+    os_window->xdg_toplevel = NULL;
+    os_window->configured = false;
+#endif
+    
 }
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
@@ -1497,6 +1637,53 @@ static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device
     }
     exit_cleanup_render_loop(dev, &essentials, &render_data, wait_buf_sem, wait_main_sem, offscreen_fence);
 }
+
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+static void render_loop_wayland(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                            struct app_os_window *os_window)
+{
+    static bool init_surface_size_once=true; // in Wayland surface should set window size, I do it on start, on start window size 0,0
+    while (!os_window->app_data.quit)
+    {
+        update_keypress();
+        while (!os_window->configured)
+          wl_display_dispatch(os_window->display);
+        while (wl_display_prepare_read(os_window->display) != 0)
+          wl_display_dispatch_pending(os_window->display);
+        wl_display_flush(os_window->display);
+        wl_display_read_events(os_window->display);
+        wl_display_dispatch_pending(os_window->display);
+        
+        check_hotkeys(os_window);
+        
+        if (((!os_window->is_minimized) && (!os_window->resize_event)&&((!os_window->app_data.pause)||((os_window->app_data.pause)&&(os_window->pause_refresh))))
+              || init_surface_size_once)
+        {
+            if (!os_window->app_data.quit)
+            {
+                os_window->app_data.quit = !render_loop_draw(phy_dev, dev, swapchain, os_window);
+            }
+            else
+                break;
+            init_surface_size_once = false;
+        }
+        else
+        {
+            if ((!os_window->is_minimized) && os_window->resize_event)
+            {
+                on_window_resize(phy_dev, dev, &essentials, swapchain, &render_data,
+                                 os_window);
+            }
+        }
+        
+        if(os_window->is_minimized||(((os_window->app_data.pause)&&(!os_window->pause_refresh)))){ //I do not delete everything on minimize, only stop rendering
+            sleep_ms(16);
+        }
+
+    }
+    exit_cleanup_render_loop(dev, &essentials, &render_data, wait_buf_sem, wait_main_sem, offscreen_fence);
+}
+
 #endif
 
 void print_usage(char *name)
@@ -1673,7 +1860,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     return (int)msg.wParam;
 }
 
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
+#elif defined(VK_USE_PLATFORM_XCB_KHR) || defined(VK_USE_PLATFORM_WAYLAND_KHR)
 
 int main(int argc, char **argv)
 {
@@ -1749,7 +1936,7 @@ int main(int argc, char **argv)
         vk_exit(vk);
         return retval;
     }
-
+#if defined(VK_USE_PLATFORM_XCB_KHR)
     printf("Init XCB\n");
     app_init_connection(&os_window);
     app_create_xcb_window(&os_window);
@@ -1765,6 +1952,23 @@ int main(int argc, char **argv)
 
     render_loop_init(&phy_dev, &dev, &swapchain, &os_window);
     render_loop_xcb(&phy_dev, &dev, &swapchain, &os_window);
+#else
+    printf("Init Wayland\n");
+    initWaylandConnection(&os_window);
+    setupWindow(&os_window);
+    swapchain.swapchain = VK_NULL_HANDLE;
+    res = vk_get_swapchain(vk, &phy_dev, &dev, &swapchain, &os_window, 1, &os_window.present_mode);
+    if (vk_error_is_error(&res))
+    {
+        vk_error_printf(&res, "Could not create surface and swapchain\n");
+        exit_cleanup(vk, &dev, &swapchain, &os_window);
+        return retval;
+    }
+    
+    render_loop_init(&phy_dev, &dev, &swapchain, &os_window);
+    render_loop_wayland(&phy_dev, &dev, &swapchain, &os_window);
+    
+#endif
 
     retval = 0;
 

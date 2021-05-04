@@ -1,0 +1,4 @@
+
+vulkan-1.dll from Vulkan SDK
+
+Used only to build exe with mingw, not needed for launch builded exe
