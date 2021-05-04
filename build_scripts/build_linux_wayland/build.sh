@@ -7,5 +7,5 @@ gcc -DVK_USE_PLATFORM_WAYLAND_KHR -Os -s -I. -I/usr/include/wayland ../../vk_uti
 #strip VK_shadertoy_wayland
 #upx VK_shadertoy_wayland
 
-#cp -r ../../launcher/shaders shaders
-#cp -r ../../launcher/textures textures
+cp -r ../../launcher/shaders shaders
+cp -r ../../launcher/textures textures
