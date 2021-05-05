@@ -1,6 +1,6 @@
 # vulkan-shadertoy-launcher
 
-**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. 
+**what is it** laucnher for **shadertoy shaders** in Vulkan. 
 
 **Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps.
 
@@ -12,7 +12,9 @@
 
 ### **Bin builds** download:
 
-**Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**
+**Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**.
+
+**Example shader in this download** - [shadertoy link](https://www.shadertoy.com/view/WlcBWr).
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
