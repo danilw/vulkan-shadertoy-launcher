@@ -14,7 +14,7 @@
 
 **Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**.
 
-**Example shader in this download** - [shadertoy link](https://www.shadertoy.com/view/WlcBWr) shader use buffers cross-reading, feedback logic, and example for texture and keyboard support, only as example that logic work same as on shadertoy.
+**Example shader in this download** - [shadertoy link](https://www.shadertoy.com/view/WlcBWr) shader use buffers cross-reading, feedback logic, and example for texture and keyboard support, only as an example that logic work same as on shadertoy.
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
