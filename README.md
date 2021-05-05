@@ -67,6 +67,8 @@ When you have just a *single shader*, and buffers not needed - use [vulkan-shade
 ___
 # Building:
 
+`git clone https://github.com/danilw/vulkan-shadertoy-launcher`
+
 **Use cmake to build.** In Windows VS press *open Cmake*. In Linux use command:
 ```
 cd launcher
