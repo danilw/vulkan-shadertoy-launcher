@@ -62,6 +62,8 @@ ___
 
 To build *minimal bin(exe)* - a number of used buffers can be configured, stb_image can be disabled and yariv-shader format can be used to compress shaders. Look for `USEFUL defines` in the *main.c* file.
 
+When you have just a *single shader*, and buffers not needed - use [vulkan-shader-launche](https://github.com/danilw/vulkan-shader-launcher)
+
 ___
 # Building:
 
@@ -75,8 +77,7 @@ make
 ```
 To build with Wayland in *CMakeLists.txt* set `OPTION(USE_WAYLAND_LINUX "use Wayland for Linux" ON)` by default used X11.
 
-___
-# Building without cmake:
+### Building without cmake:
 
 First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` or **x11** `cd build_scripts/build_linux_x11` or **mingw** `cd build_scripts/build_mingw_win`
 
