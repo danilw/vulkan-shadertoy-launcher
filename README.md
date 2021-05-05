@@ -1,7 +1,5 @@
 # vulkan-shadertoy-launcher
 
-base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
-
 **what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Use case - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps.
 
 **Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
@@ -91,6 +89,7 @@ This project includes **prebuild files:**
 
 *build_scripts/yariv_shaders/bin* folder with pre-build yariv shaders.
 
+___
 **Images:** 
 
 ![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/img.png)
