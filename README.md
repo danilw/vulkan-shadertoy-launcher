@@ -98,6 +98,6 @@ This project includes **prebuild files:**
 ___
 **Images:** 
 
-![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/img.png)
+![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/launcher_v1_1.png)
 
 
