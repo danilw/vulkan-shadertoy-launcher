@@ -21,7 +21,7 @@ ___
 
 1. **Download** *Bin build* or build project.
 
-2. **Open** yours shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
+2. **Open** your shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
 3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers:
 ```
