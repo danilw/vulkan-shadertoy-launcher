@@ -2,36 +2,28 @@
 
 base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
-**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Read **how to use**, support features and limitations below.
+**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Use case - launch your own shaders outside of shadertoy, or create small single-bin(exe) file with buildin shaders, for demo-like apps.
 
-**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux require *xcb* and *xcb-keysyms* library.
+**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux require *xcb* and *xcb-keysyms* library or *wayland-devel*.
 
-**Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11)
+**Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11/Wayland)
 
 ### **Bin builds** download:
 
-**Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**, or direct links latest build: Windows **[Download Win64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_win.zip)** and Linux **[Download Linux64](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/shatertoy_launcher/vulkan-shadertoy-launcher_linux.zip)**
+**Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
 **Apps that I made using this code:** [glsl auto tetris](https://www.pouet.net/prod.php?which=85052), [glsl card game](https://www.pouet.net/prod.php?which=84806), [likes (glsl game)](https://www.pouet.net/prod.php?which=84805)
 
 ___
-TODO:
+# How to use:
 
-0. rework this page
-1. sound and 3d textures support, and mipmap for buffers
-2. config file support and tile render
-3. export shaders to video frame by frame (using ffmpeg), Wayland support, video as texture
+1. **Download** *Bin build* or build project.
 
-___
-# How to use
+2. **Open** yours shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
-1. **Download** *Bin build* or build project yourself. as example launcher name `VK_shadertoy_launcher.exe`
-
-2. **Open** any shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
-
-3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers 
+3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers:
 ```
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
@@ -40,52 +32,36 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 ```
 *shadertoy textures* can be found on [Shadertoy Unofficial](https://shadertoyunofficial.wordpress.com/2019/07/23/shadertoy-media-files/)
 
-**binding rules/order:** look files `shaders/src/*.frag` example:
-```
-#define iChannel0 iChannels[0]
-#define iChannel1 iChannels[1]
-#define iChannel2 iChannels[2]
-#define iChannel3 iChannels[3]
-```
-change in any order you need, `iTextures` is images from `*.png` files. Default order \<0-3\> by file name.
+___
+**Binding:** 
 
-**textures** names in `textures/` folder \<1-4\>.png files
+**buffers** - `iChannels[0-3]` and `iChannel0-3` defined in the `shaders/src/*.frag` files.
 
-4. **Compile shaders** to `*.spv` format using *glslangValidator* command list in file *build_shaders.cmd* or *build_shaders.sh*
+**textures** - `iTextures[0-3]` is images from `*.png` files.
 
-5. **Launch** `VK_shadertoy_launcher.exe` and it should work same as on shadertoy
+**keyboard** - `iKeyboard` shadertoy keyboard.
+
+4. **Compile shaders** to `*.spv` using *glslangValidator* commands in the *shaders/build_shaders.cmd* or *shaders/build_shaders.sh*
+
+5. **Launch** `VK_shadertoy_launcher.exe` and shader should work same as on shadertoy
 
 ___
-# Support features and extra
+# Supported:
 
-0. **Input** *Mouse and Keyboard* same as on shadertoy.
+Buffers *(no mipmap)*, textures *(mipmap supported)*, keyboard and mouse *(same as on shadertoy)*.
 
-1. **Textures** mipmaps enabled by default, edit in `main.c` option `USE_MIPMAPS`, all textures with VFlip to change remove `stbi_set_flip_vertically_on_load(true);`
+**Not supported** - audio/video, cubemaps, 3d texture.
 
-2. **Number of Buf and textures** can be configured in `main.c`, set `OFFSCREEN_BUFFERS` and `IMAGE_TEXTURES` to any number you need, after changing its values also edit `shaders/src/*.frag` files, same values there. *For each buffer and image **required** its own `*.spv` or `*.png` file in those folders.*
+Not implemented Uniforms - `iSampleRate` does not exist, `iChannelTime` does not exist, `iFrameRate` does not exist, `iChannelResolution` use in shader [textureSize](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/textureSize.xhtml) instead.
 
-3. **Static resolution** uncomment `#define NO_RESIZE_BUF` in `main.c` to make buffers not resize on window resize.
+# Configuration:
 
-4. **Buffers format** all Buffers `VK_FORMAT_R32G32B32A32_SFLOAT` images `VK_FORMAT_R8G8B8A8_UNORM`, to change edit it in `main.c` code.
-
-*extra VkQueue* - used *1 VkQueue per buffer* when available, or *1 VkQueue* for everything.
-
-*extra CommandBuffer* - set `#define ONE_CMD` in `main.c`(line 10) to use only *2 CommandBuffers* for everything always, by default used *1 CommandBuffer* per VkQueue, or *all CommanBuffers in single VkQueue* when `VkQueue<Num of buffers`
-
-**Not supported right now**
-
-1. Only 2D textures(images), cubemaps, sound, and 3d textures not supported.\<TODO\>
-
-2. Buffers only Linear filtering. to have `Nearest` fileter, `texelFetch` in shaders can be used instead of `texture`.
-
-3. List of not implemented Uniforms - `iSampleRate` does not exist now, `iChannelTime` does not exist, `iFrameRate` does not exist, `iChannelResolution` use in shader [textureSize](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/textureSize.xhtml) instead.
-
-Everything else work same as on shadertoy.
+To build *minimal bin(exe)* - number of used buffers can be configured, stb_image can be disabled and yariv-shader format can be used to compress shaders. Look for `USEFUL defines` in the *main.c* file.
 
 ___
-# Building
+# Building:
 
-**Use cmake to build.** In Windows VS press *open Cmake*.
+**Use cmake to build.** In Windows VS press *open Cmake*. In Linux use command:
 ```
 cd launcher
 mkdir build
@@ -93,17 +69,27 @@ cd build
 cmake ..
 make
 ```
+To build with Wayland in *CMakeLists.txt* set `OPTION(USE_WAYLAND_LINUX "use Wayland for Linux" ON)` by default used X11.
 
-*Building without cmake:*
+___
+# Building without cmake:
 
-Build with **gcc** (linux): (to build with *clang* change *gcc* to *clang*)
-```
-gcc -DVK_USE_PLATFORM_XCB_KHR -O2 -s ../vk_utils/vk_utils.c ../vk_utils/vk_error_print.c ../vk_utils/vk_render_helper.c main.c -o VK_shadertoy_launcher -lm -lxcb -lxcb-keysyms -lvulkan
-```
-Build with **mingw64** (*vulkan-1.dll* from VulkanSDK, *vulkan.h* in system(cygwin or native) path):
-```
-x86_64-w64-mingw32-gcc -DVK_USE_PLATFORM_WIN32_KHR -O2 -s ../vk_utils/vk_utils.c ../vk_utils/vk_error_print.c ../vk_utils/vk_render_helper.c main.c -o VK_shadertoy_launcher.exe -lm -mwindows <path to>/vulkan-1.dll
-```
+First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` or **x11** `cd build_scripts/build_linux_x11` or **mingw** `cd build_scripts/build_mingw_win`
+
+*For Wayland first launch* `sh gen_wayland_header.sh`
+
+Then `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with shaders.
+
+To build *yariv-shaders* `cd build_scripts/yariv_shaders` and `sh build_shaders_yariv.sh`
+
+___
+This project include **prebuild files:**
+
+*build_scripts/win_vk_dll/vulkan-1.dll* file from Vulkan SDK needed to build using mingw.
+
+*build_scripts/yariv_shaders/yariv_pack* this is compiled file, its source `build_scripts/yariv/main.c`, needed to generate yariv shaders.
+
+*build_scripts/yariv_shaders/bin* folder with pre-build yariv shaders.
 
 **Images:** 
 
