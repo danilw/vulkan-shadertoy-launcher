@@ -76,7 +76,7 @@ ___
 
 First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` or **x11** `cd build_scripts/build_linux_x11` or **mingw** `cd build_scripts/build_mingw_win`
 
-*For Wayland first launch* `sh gen_wayland_header.sh`
+For *Wayland* first launch `sh gen_wayland_header.sh`
 
 Then `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with shaders.
 
