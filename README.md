@@ -2,7 +2,7 @@
 
 **what is it** laucnher for **shadertoy shaders** in Vulkan. 
 
-**Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps.
+**Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps. This code does not have Vulkan validation errors.
 
 *Minimal size* without stb_image - 30Kb, and using less than 1k lines of shader code building with yariv-shaders bin(exe)-size will be ~50Kb.
 
