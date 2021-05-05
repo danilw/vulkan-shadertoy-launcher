@@ -78,7 +78,7 @@ Using VS2019 in Windows (open links to see tutorial screenshot):
 2. Press [Manage Configureations](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/4.png) and [Add new configuration](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/5.png) select [x64 Release](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/6.png)
 3. In General [Configuration type set MinSizeRel](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/7.png) and press Ctrl+S to save
 4. Then [select created configuration](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/8.png) and press [Build-Build All](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/9.png)
-5. Compiled build location *launcher\out\build\x64-Release*, to launch required folder *shaders* and *textures*.
+5. Compiled build location *launcher\out\build\x64-Release\Vk_shadertoy.exe*, to launch required folder *shaders* and *textures*.
 
 
 In Linux use command:
