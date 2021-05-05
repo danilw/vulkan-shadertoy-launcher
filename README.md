@@ -62,7 +62,7 @@ ___
 
 To build *minimal bin(exe)* - a number of used buffers can be configured, stb_image can be disabled and yariv-shader format can be used to compress shaders. Look for `USEFUL defines` in the *main.c* file.
 
-When you have just a *single shader*, and buffers not needed - use [vulkan-shader-launche](https://github.com/danilw/vulkan-shader-launcher)
+When you have just a *single shader*, and buffers not needed - use [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
 ___
 # Building:
