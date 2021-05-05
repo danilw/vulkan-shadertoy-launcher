@@ -2,9 +2,9 @@
 
 base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launcher)
 
-**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Use case - launch your own shaders outside of shadertoy, or create small single-bin(exe) file with buildin shaders, for demo-like apps.
+**what is it** laucnher for **[shadertoy](https://www.shadertoy.com/) shaders** in Vulkan. Use case - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps.
 
-**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux require *xcb* and *xcb-keysyms* library or *wayland-devel*.
+**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11/Wayland)
 
@@ -19,7 +19,7 @@ base on [vulkan-shader-launcher](https://github.com/danilw/vulkan-shader-launche
 ___
 # How to use:
 
-1. **Download** *Bin build* or build project.
+1. **Download** *Bin build* or build the project.
 
 2. **Open** your shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
@@ -43,12 +43,12 @@ ___
 
 4. **Compile shaders** to `*.spv` using *glslangValidator* commands in the *shaders/build_shaders.cmd* or *shaders/build_shaders.sh*
 
-5. **Launch** `VK_shadertoy_launcher.exe` and shader should work same as on shadertoy
+5. **Launch** `VK_shadertoy_launcher.exe` and shader should work the same as on shadertoy
 
 ___
 # Supported:
 
-Buffers *(no mipmap)*, textures *(mipmap supported)*, keyboard and mouse *(same as on shadertoy)*.
+Buffers *(no mipmap)*, textures *(mipmap supported)*, keyboard, and mouse *(same as on shadertoy)*.
 
 **Not supported** - audio/video, cubemaps, 3d texture.
 
@@ -56,7 +56,7 @@ Not implemented Uniforms - `iSampleRate` does not exist, `iChannelTime` does not
 
 # Configuration:
 
-To build *minimal bin(exe)* - number of used buffers can be configured, stb_image can be disabled and yariv-shader format can be used to compress shaders. Look for `USEFUL defines` in the *main.c* file.
+To build *minimal bin(exe)* - a number of used buffers can be configured, stb_image can be disabled and yariv-shader format can be used to compress shaders. Look for `USEFUL defines` in the *main.c* file.
 
 ___
 # Building:
@@ -76,14 +76,14 @@ ___
 
 First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` or **x11** `cd build_scripts/build_linux_x11` or **mingw** `cd build_scripts/build_mingw_win`
 
-For *Wayland* first launch `sh gen_wayland_header.sh`
+For *Wayland* launch `sh gen_wayland_header.sh`
 
 Then `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with shaders.
 
 To build *yariv-shaders* `cd build_scripts/yariv_shaders` and `sh build_shaders_yariv.sh`
 
 ___
-This project include **prebuild files:**
+This project includes **prebuild files:**
 
 *build_scripts/win_vk_dll/vulkan-1.dll* file from Vulkan SDK needed to build using mingw.
 
