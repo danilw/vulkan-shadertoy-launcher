@@ -89,17 +89,17 @@ cd build
 cmake ..
 make
 ```
-To build with Wayland in *CMakeLists.txt* set `OPTION(USE_WAYLAND_LINUX "use Wayland for Linux" ON)` by default used X11.
+To build with Wayland in *CMakeLists.txt* set `OPTION(USE_WAYLAND_LINUX "use Wayland for Linux" ON)` by default used X11. If your system missing *Wayland xdg-shell*, then look on Building without cmake below.
 
 ### Building without cmake:
 
 First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` or **x11** `cd build_scripts/build_linux_x11` or **mingw** `cd build_scripts/build_mingw_win`
 
-For *Wayland* launch `sh gen_wayland_header.sh`
-
-Then `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with shaders.
+Launch `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with buildin-shaders.
 
 To build *yariv-shaders* `cd build_scripts/yariv_shaders` and `sh build_shaders_yariv.sh`
+
+To generate *Wayland xdg-shel headers* use`sh gen_wayland_header.sh` in the *build_linux_wayland* folder.
 
 ___
 This project includes **prebuild files:**
