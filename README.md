@@ -71,7 +71,7 @@ ___
 
 **Use cmake to build.** 
 
-Using VS2019 in Windows (open links to see tutorial screenshot):
+Using VS2019 in the Windows (open links to see tutorial screenshot):
 
 0. Download and install [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows).
 1. Launch VS press [Continue without code](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/1.png) and [File-Open-CMake](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/2.png) select [CMakeLists.txt file](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/vs_cmake_tut/3.png).
@@ -81,7 +81,7 @@ Using VS2019 in Windows (open links to see tutorial screenshot):
 5. Compiled build location *launcher\out\build\x64-Release\Vk_shadertoy.exe*, to launch required folder *shaders* and *textures*.
 
 
-In Linux use command:
+In the Linux use command:
 ```
 cd launcher
 mkdir build
