@@ -49,8 +49,7 @@ layout (location = 0) out vec4 out_color;
 void main()
 {
     vec4 uFragColor=vec4(0.);
-    vec2 fragCoord=(frag_pos.xy/2.+vec2(0.5,0.5)); // 0-1 range to fit shadertoy
-    fragCoord=floor(iResolution.xy*fragCoord)+0.5;
+    vec2 fragCoord=gl_FragCoord.xy;
     mainImage(uFragColor,fragCoord);
     out_color=uFragColor;
 }
