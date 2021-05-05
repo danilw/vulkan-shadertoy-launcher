@@ -30,7 +30,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 ```
 *shadertoy textures* can be found on [Shadertoy Unofficial](https://shadertoyunofficial.wordpress.com/2019/07/23/shadertoy-media-files/)
 
-___
 **Binding:** 
 
 **buffers** - `iChannels[0-3]` and `iChannel0-3` defined in the `shaders/src/*.frag` files.
