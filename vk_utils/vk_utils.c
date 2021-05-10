@@ -251,7 +251,10 @@ vk_error vk_init_ext(VkInstance *vk, const char *ext_names[], uint32_t ext_count
 
     info = (VkInstanceCreateInfo){
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext = NULL,
         .pApplicationInfo = &app_info,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = NULL,
         .enabledExtensionCount = ext_count,
         .ppEnabledExtensionNames = ext_names,
     };
