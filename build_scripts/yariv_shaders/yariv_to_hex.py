@@ -23,7 +23,7 @@ if os.name == 'nt':
   spirvcompiler += ".exe"
 
 if not os.path.isdir(ooutdir):
-  os.mkdir(ooutdir, 0755 );
+  os.mkdir(ooutdir, 0o0755 );
 
 subprocess.call([spirvcompiler,'-V100',inputfilepath,'-o',os.path.join(ooutdir,ginfile) + '.spv'])
 
