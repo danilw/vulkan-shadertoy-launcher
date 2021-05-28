@@ -18,6 +18,8 @@
 // FPS_LOCK(30) hotkey function 30 FPS lock (no Vsync)
 // check_hotkeys function where hotkeys defined
 
+// Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (tested works in buffers)
+
 
 // define to not resize offscreen-buf on window resize (buffer size will be same as window on startup)
 // #define NO_RESIZE_BUF
@@ -497,7 +499,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
             retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
                                                  &render_data->buf_obuffers[i * 2], 2, &render_data->buf_render_pass[i],
-                                                 VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
+                                                 VK_KEEP, VK_WITHOUT_DEPTH, true);
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "Could not create off-screen buffers\n");
@@ -1081,7 +1083,7 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
     VkClearValue clear_values = {
         .color =
             {
-                .float32 = {0.0, 0.0, 0.0, 1.0},
+                .float32 = {0.0, 0.0, 0.0, 0.0},
             },
     };
     VkRenderPassBeginInfo pass_info = {
@@ -1350,7 +1352,7 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     VkClearValue clear_values = {
         .color =
             {
-                .float32 = {0.0, 0.0, 0.0, 1.0},
+                .float32 = {0.0, 0.0, 0.0, 0.0},
             },
     };
     VkRenderPassBeginInfo pass_info = {
