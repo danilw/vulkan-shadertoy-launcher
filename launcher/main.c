@@ -499,7 +499,7 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
             // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
             retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
                                                  &render_data->buf_obuffers[i * 2], 2, &render_data->buf_render_pass[i],
-                                                 VK_KEEP, VK_WITHOUT_DEPTH, true);
+                                                 VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "Could not create off-screen buffers\n");
