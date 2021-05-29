@@ -18,7 +18,7 @@
 // FPS_LOCK(30) hotkey function 30 FPS lock (no Vsync)
 // check_hotkeys function where hotkeys defined
 
-// Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (tested works in buffers)
+// Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (works in buffers)
 
 
 // define to not resize offscreen-buf on window resize (buffer size will be same as window on startup)
