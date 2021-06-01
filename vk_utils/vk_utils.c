@@ -470,6 +470,8 @@ vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, str
 
     VkSwapchainCreateInfoKHR swapchain_info = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = NULL,
+        .flags = VK_KHR_swapchain,
         .surface = swapchain->surface,
         .minImageCount = image_count,
         .imageFormat = swapchain->surface_format.format,
@@ -481,6 +483,9 @@ vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, str
         },
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        //.queueFamilyIndexCount = >0,
+        //.pQueueFamilyIndices = not null,
         .preTransform = swapchain->surface_caps.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = *present_mode,

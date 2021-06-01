@@ -26,7 +26,7 @@ layout (push_constant) uniform push_constants
     bvec2 u_Mouse_lr;
     vec2 u_Resolution;
     bool u_debugdraw;
-    bool u_pause;
+    int pCustom;
     float u_Time;
     float u_TimeDelta;
     int u_Frame;
@@ -39,7 +39,8 @@ int iFrame=constants.u_Frame;
 vec4 iMouse=constants.u_Mouse;
 vec4 iDate=constants.u_Date;
 bool is_debugdraw=constants.u_debugdraw;
-bool is_pause=constants.u_pause;
+bool is_pause=bool(constants.pCustom-(constants.pCustom/10)*10);
+bool main_image_srgb=bool((constants.pCustom/10)*10-(constants.pCustom/100)*100);
 
 layout (location = 0) out vec4 out_color;
 
@@ -55,4 +56,5 @@ void main()
     mainImage(uFragColor,fragCoord);
     out_color=uFragColor;
     //if(is_pause)out_color=vec4(vec3(dot(clamp(out_color.rgb,0.,1.),vec3(1.))/3.),1.);
+    if(main_image_srgb)out_color.rgb = ((exp2(out_color.rgb)-1.0)-out_color.rgb*0.693147)*3.258891;
 }

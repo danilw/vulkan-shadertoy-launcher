@@ -26,7 +26,7 @@ layout (push_constant) uniform push_constants
     bvec2 u_Mouse_lr;
     vec2 u_Resolution;
     bool u_debugdraw;
-    bool u_pause;
+    int pCustom;
     float u_Time;
     float u_TimeDelta;
     int u_Frame;
@@ -39,7 +39,7 @@ int iFrame=constants.u_Frame;
 vec4 iMouse=constants.u_Mouse;
 vec4 iDate=constants.u_Date;
 bool is_debugdraw=constants.u_debugdraw;
-bool is_pause=constants.u_pause;
+bool is_pause=bool(constants.pCustom-(constants.pCustom/10)*10);
 
 layout (location = 0) out vec4 out_color;
 
