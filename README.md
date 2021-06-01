@@ -1,6 +1,6 @@
 # vulkan-shadertoy-launcher
 
-**what is it** laucnher for **shadertoy shaders** in Vulkan. Using Vulkan 1.0
+**what is it** laucnher for **shadertoy shaders** in Vulkan.
 
 **Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps. This code does not have Vulkan validation errors (and tested on Nvidia and AMD GPU-s).
 
