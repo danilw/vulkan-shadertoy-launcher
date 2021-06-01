@@ -188,9 +188,12 @@ VkCommandBuffer offscreen_cmd_buffer[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};
 VkSemaphore wait_buf_sem = VK_NULL_HANDLE, wait_main_sem = VK_NULL_HANDLE;
 bool first_submission = true;
 
+bool enterFullscreen();
+
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 #include <shellapi.h>
 
+static HWND chWnd;
 static void check_hotkeys(struct app_os_window *os_window);
 static void update_key_map(int w, int h, bool val);
 static void update_keypress();
@@ -260,9 +263,11 @@ static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct 
     return true;
 }
 
+static bool fullscreen = false;
+static bool fs_once = true;
 static void check_hotkeys(struct app_os_window *os_window)
 {
-    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49;
+    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70;
     if (keyboard_map[Key_Escape][1])
         os_window->app_data.quit = true;
     if (keyboard_map[Key_Space][1])
@@ -272,7 +277,6 @@ static void check_hotkeys(struct app_os_window *os_window)
     if (keyboard_map[Key_1][1])
         os_window->fps_lock = !os_window->fps_lock;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    const int Key_f = 70;
     //example resize event for Wayland
     if (keyboard_map[Key_f][1]){
         os_window->resize_event = true;
@@ -287,6 +291,11 @@ static void check_hotkeys(struct app_os_window *os_window)
           os_window->app_data.iResolution[1]=720;
         }
       }
+#else
+    if (keyboard_map[Key_f][1]) {
+        if (fs_once) { enterFullscreen(); fs_once = false; }
+    }
+    else fs_once = true;
 #endif
 }
 
@@ -1550,6 +1559,12 @@ void init_win_params(struct app_os_window *os_window)
 }
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
+
+bool enterFullscreen() {
+    // idk how to make borderless fullscren on xcb
+    return true;
+}
+
 static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
                             struct app_os_window *os_window)
 {
@@ -1705,6 +1720,46 @@ void print_usage(char *name)
 }
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
+
+static int old_w, old_h;
+static RECT rcClient, rcWind;
+
+bool exitFullscreen();
+bool enterFullscreen() {
+    if (!chWnd)return false;
+    if (fullscreen){return exitFullscreen();}
+    HWND hwnd = chWnd;
+    POINT ptDiff;
+    GetClientRect(hwnd, &rcClient);
+    GetWindowRect(hwnd, &rcWind);
+    ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
+    ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
+    old_w = os_window.app_data.iResolution[0]+ptDiff.x;
+    old_h = os_window.app_data.iResolution[1]+ptDiff.y;
+    int fullscreenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int fullscreenHeight = GetSystemMetrics(SM_CYSCREEN);
+    LONG lStyle = GetWindowLong(hwnd, GWL_STYLE);
+    lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+    SetWindowLong(hwnd, GWL_STYLE, lStyle);
+    LONG lExStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+    lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+    SetWindowLong(hwnd, GWL_EXSTYLE, lExStyle);
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, fullscreenWidth, fullscreenHeight, SWP_SHOWWINDOW); //HWND_TOPMOST
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+    fullscreen = true;
+    return true;
+}
+
+bool exitFullscreen() {
+    if (!chWnd)return false;
+    HWND hwnd = chWnd;
+
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, WS_EX_LEFT);
+    SetWindowLongPtr(hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+    SetWindowPos(hwnd, HWND_NOTOPMOST, rcWind.left, rcWind.top, old_w, old_h, SWP_SHOWWINDOW);
+    fullscreen = false;
+    return true;
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {

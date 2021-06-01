@@ -94,6 +94,7 @@ void process_msg(MSG *msg, bool *done){
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    chWnd = hWnd;
     switch (uMsg) {
     case WM_CLOSE:
         PostQuitMessage(0);
