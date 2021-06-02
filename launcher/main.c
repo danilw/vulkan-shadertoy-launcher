@@ -1726,6 +1726,10 @@ static RECT rcClient, rcWind;
 
 bool exitFullscreen();
 bool enterFullscreen() {
+    return true;
+    
+    // for some reason this code works only on Nvidia, on AMD it does not work(crash)
+/*
     if (!chWnd)return false;
     if (fullscreen){return exitFullscreen();}
     HWND hwnd = chWnd;
@@ -1748,6 +1752,7 @@ bool enterFullscreen() {
     SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
     fullscreen = true;
     return true;
+*/
 }
 
 bool exitFullscreen() {
