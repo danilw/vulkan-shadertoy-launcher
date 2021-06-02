@@ -267,7 +267,7 @@ static bool fullscreen = false;
 static bool fs_once = true;
 static void check_hotkeys(struct app_os_window *os_window)
 {
-    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70;
+    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70, Key_f11 = 122;
     if (keyboard_map[Key_Escape][1])
         os_window->app_data.quit = true;
     if (keyboard_map[Key_Space][1])
@@ -292,7 +292,7 @@ static void check_hotkeys(struct app_os_window *os_window)
         }
       }
 #else
-    if (keyboard_map[Key_f][1]) {
+    if (keyboard_map[Key_f][1]||keyboard_map[Key_f11][1]) {
         if (fs_once) { enterFullscreen(); fs_once = false; }
     }
     else fs_once = true;
