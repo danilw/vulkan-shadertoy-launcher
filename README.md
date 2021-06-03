@@ -99,7 +99,7 @@ First go to one of folders - **Wayland** `cd build_scripts/build_linux_wayland` 
 
 Launch `sh build.sh`, or `sh build_yariv.sh` to have compressed single bin-file with buildin-shaders.
 
-To build *yariv-shaders* `cd build_scripts/yariv_shaders` and `sh build_shaders_yariv.sh`
+To build *yariv-shaders* `cd build_scripts/yariv_shaders` and `sh build_shaders_yariv.sh`. Remember yariv_pack file needs run permissions, or build it from source in `build_scripts/yariv/` and move to yariv_shaders folder.
 
 To generate *Wayland xdg-shel headers* use`sh gen_wayland_header.sh` in the *build_linux_wayland* folder.
 
