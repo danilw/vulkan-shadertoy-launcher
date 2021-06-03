@@ -8,7 +8,7 @@
 
 **Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
 
-Used Vulkan 1.0 and only single extension [VK_KHR_swapchain](https://vulkan.gpuinfo.org/listextensions.php) `VK_KHR_SWAPCHAIN_EXTENSION_NAME` that on 100% devices with Vulkan.
+Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_EXTENSION_NAME` that on 100% devices with Vulkan.
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11/Wayland)
 
