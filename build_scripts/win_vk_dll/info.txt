@@ -1,4 +1,5 @@
 
 vulkan-1.dll from Vulkan SDK
+VulkanSDK/1.1.126.0/RunTimeInstaller/x64/vulkan-1.dll
 
 Used only to build exe with mingw, not needed for launch builded exe
