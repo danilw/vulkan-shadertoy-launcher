@@ -42,7 +42,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
 **buffers** - `iChannels[0-3]` and `iChannel0-3` defined in the `shaders/src/*.frag` files.
 
-*Warning*: do not redefine `#define iChannel0 iChannel1`. *To change order edit* `launcher/shaders/src/.frag` and change order there.
+*Warning*: do not redefine `#define iChannel0 iChannel1`. *To change order edit* `launcher/shaders/src/*.frag` and change order there.
 
 **textures** - `iTextures[0-3]` is images from `*.png` files.
 
@@ -59,7 +59,7 @@ ___
 
 **Discard** disabled by default (in the release build also disabled), to enable it in `launcher/main.c` change `VK_C_CLEAR` to `VK_KEEP` (use search). 
 
-*Warning* as mainImage I use number of framebuffers from `vk_get_swapchain_images` it may be 1 or 2 or 3 or more, depends of GPU, that means discard will not work(in most cases) on mainImage. I do not recomend using *discard*. if you have setup with tile-like render - then just move mainImage to buffer(iChannel) and replace discard with reading previous frame as example look this tile shader (look comment *for buffers*), and in mainImage display that buffer(iChannel).
+*Warning* as mainImage I use number of framebuffers from `vk_get_swapchain_images` it may be 1 or 2 or 3 or more, depends of GPU, that means discard will not work(in most cases) on mainImage. I do not recomend using *discard*. if you have setup with tile-like render - then just move mainImage to buffer(iChannel) and replace discard with reading previous frame as example look [this tile shader](https://www.shadertoy.com/view/tltBzM) (look comment *for buffers*), and in mainImage display that buffer(iChannel).
 
 **Not supported** - audio/video, cubemaps, 3d texture.
 
