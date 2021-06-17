@@ -42,6 +42,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
 **buffers** - `iChannels[0-3]` and `iChannel0-3` defined in the `shaders/src/*.frag` files.
 
+*Warning*: do not redefine `#define iChannel0 iChannel1`. *To change order edit* `launcher/shaders/src/bufX.frag` or `main.frag` and change order there.
+
 **textures** - `iTextures[0-3]` is images from `*.png` files.
 
 **keyboard** - `iKeyboard` shadertoy keyboard.
