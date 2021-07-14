@@ -1,10 +1,11 @@
 // https://www.shadertoy.com/view/WdBGzc
 
 // Created by Danil (2019+) https://github.com/danilw
-// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+// The MIT License
 
-//short version
-#define gc(x) vec3( .6 + .6 * cos( 6.3 *  x/s  + vec4(0,23,21,0)  ))
+
+vec3 gc(float x, float s) {return vec3( .6 + .6 * cos( 6.3 *  x/s  + vec3(0,23,21)));}
+vec3 gc2(float x, float s) {return vec3( .6 + .6 * cos( 6.3 *  s-1.-x/s  + vec3(0,23,21)));}
 
 void mainImage( out vec4 O, in vec2 u ){
     O = vec4(vec3(0x1a,0x13,0x21)/float(0xff),1.);
@@ -20,8 +21,8 @@ void mainImage( out vec4 O, in vec2 u ){
     bvec2 gv=bvec2(v.x==0.,v.y==s-1.);
     float r=(v.x+1.)/2.-.5,r1=(s-1.-v.y+1.)/2.-.5;
     if(gv.x)r=r1;if(gv.y)r1=r;
-    vec3 ccx=gc(v.x);
-    vec3 ccy=gc(s-1.-v.y);
+    vec3 ccx=gc(v.x,s);
+    vec3 ccy=gc2(v.y,s);
     float dc=0.;
     for(float i=0.;i<2.;i++)
     dc=max(dc,smoothstep(z*s,-z*s,length(p+.45*vec2(sin((t+1./120.*i)*r-1.57),cos((t+1./120.*i)*r1-1.57))) - .015));

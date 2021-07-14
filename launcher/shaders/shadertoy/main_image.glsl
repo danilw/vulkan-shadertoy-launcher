@@ -1,3 +1,7 @@
+
+// Created by Danil (2021+) https://twitter.com/AruGL
+// The MIT License
+
 // self https://www.shadertoy.com/view/WlcBWr
 
 void mainImage_keyboard( out vec4 fragColor, in vec2 fragCoord );
@@ -24,12 +28,22 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         case 3:col=vec4(texture(iChannel3,uv).rgb,1.);break;
     }
     
+    
     vec2 tuv=fragCoord/iResolution.xy;
     tuv*=5.;
     if((abs(tuv.x-0.5)<0.5)&&(abs(tuv.y-0.5)<0.5))
     col.rgb = texture(iTextures[0], tuv).rgb;
     
+    
     fragColor = col;
+    
+    if(iMouse.z>0.0){
+        vec2 res=iResolution.xy/iResolution.y;
+        uv=fragCoord/iResolution.y-0.5*res;
+        vec2 im = iMouse.xy/iResolution.y-0.5*res;
+        fragColor.g+=0.8*(1.-smoothstep(0.1,0.1+1.5/iResolution.y,length(uv-im)));
+    }
+    
 }
 
 
@@ -57,7 +71,7 @@ void mainImage_keyboard( out vec4 fragColor, in vec2 fragCoord )
     col = mix( col, vec3(1.0,1.0,0.0), 
         (1.0-smoothstep(0.3,0.31,length(uv-vec2(0.0,0.5))))*
         (0.3+0.7*texelFetch( keyboard_texture, ivec2(KEY_UP,0), 0 ).x));
-	
+  
     col = mix( col, vec3(0.0,1.0,0.0),
         (1.0-smoothstep(0.3,0.31,length(uv-vec2(0.75,0.0))))*
         (0.3+0.7*texelFetch( keyboard_texture, ivec2(KEY_RIGHT,0), 0 ).x));
@@ -67,11 +81,11 @@ void mainImage_keyboard( out vec4 fragColor, in vec2 fragCoord )
         (0.3+0.7*texelFetch( keyboard_texture, ivec2(KEY_DOWN,0), 0 ).x));
 
 
-    // keypress	
+    // keypress 
     col = mix( col, vec3(1.0,0.0,0.0), 
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(-0.75,0.0))-0.35)))*
         texelFetch( keyboard_texture, ivec2(KEY_LEFT,1),0 ).x);
-	
+  
     col = mix( col, vec3(1.0,1.0,0.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,0.5))-0.35)))*
         texelFetch( keyboard_texture, ivec2(KEY_UP,1),0 ).x);
@@ -79,17 +93,17 @@ void mainImage_keyboard( out vec4 fragColor, in vec2 fragCoord )
     col = mix( col, vec3(0.0,1.0,0.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.75,0.0))-0.35)))*
         texelFetch( keyboard_texture, ivec2(KEY_RIGHT,1),0 ).x);
-	
+  
     col = mix( col, vec3(0.0,0.0,1.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,-0.5))-0.35)))*
         texelFetch( keyboard_texture, ivec2(KEY_DOWN,1),0 ).x);
     
     
-    // toggle	
+    // toggle 
     col = mix( col, vec3(1.0,0.0,0.0), 
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(-0.75,0.0))-0.3)))*
         texelFetch( keyboard_texture, ivec2(KEY_LEFT,2),0 ).x);
-	
+  
     col = mix( col, vec3(1.0,1.0,0.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,0.5))-0.3)))*
         texelFetch( keyboard_texture, ivec2(KEY_UP,2),0 ).x);
@@ -97,7 +111,7 @@ void mainImage_keyboard( out vec4 fragColor, in vec2 fragCoord )
     col = mix( col, vec3(0.0,1.0,0.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.75,0.0))-0.3)))*
         texelFetch( keyboard_texture, ivec2(KEY_RIGHT,2),0 ).x);
-	
+  
     col = mix( col, vec3(0.0,0.0,1.0),
         (1.0-smoothstep(0.0,0.01,abs(length(uv-vec2(0.0,-0.5))-0.3)))*
         texelFetch( keyboard_texture, ivec2(KEY_DOWN,2),0 ).x);
