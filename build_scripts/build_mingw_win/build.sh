@@ -4,5 +4,8 @@ x86_64-w64-mingw32-gcc -DVK_USE_PLATFORM_WIN32_KHR -DUSE_stb_image -Os -s -lm -m
 
 #upx VK_shadertoy.exe
 
+rm -rf shaders
+rm -rf textures
+
 cp -r ../../launcher/shaders shaders
 cp -r ../../launcher/textures textures

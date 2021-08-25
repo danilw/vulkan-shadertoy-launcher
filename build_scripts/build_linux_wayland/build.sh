@@ -4,8 +4,11 @@ gcc -DVK_USE_PLATFORM_WAYLAND_KHR -DUSE_stb_image -Os -s -I. -I/usr/include/wayl
 
 #clang 
 
-#strip VK_shadertoy_wayland
+strip VK_shadertoy_wayland
 #upx VK_shadertoy_wayland
+
+rm -rf shaders
+rm -rf textures
 
 cp -r ../../launcher/shaders shaders
 cp -r ../../launcher/textures textures

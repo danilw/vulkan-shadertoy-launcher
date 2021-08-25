@@ -7,5 +7,8 @@ gcc -DVK_USE_PLATFORM_XCB_KHR -DUSE_stb_image -Os -s -fdata-sections -ffunction-
 strip VK_shadertoy
 #upx VK_shadertoy
 
+rm -rf shaders
+rm -rf textures
+
 cp -r ../../launcher/shaders shaders
 cp -r ../../launcher/textures textures
