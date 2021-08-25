@@ -1,6 +1,10 @@
 #!/bin/sh
 
-#build yariv first and put yariv_pack binary to this folder
+# build yariv first and put yariv_pack binary to this folder
+
+rm -rf src
+rm -rf shadertoy
+rm -rf bin
 
 cp -r ../../launcher/shaders/src/ src
 cp -r ../../launcher/shaders/shadertoy/ shadertoy 
