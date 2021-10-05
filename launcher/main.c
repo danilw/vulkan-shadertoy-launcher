@@ -1536,7 +1536,6 @@ void init_win_params(struct app_os_window *os_window)
     os_window->minsize.x = 1;
     os_window->minsize.y = 1;
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
-    os_window->resize_xcb_event = false;
     os_window->atom_wm_delete_window = NULL;
     os_window->xcb_window = 0;
     os_window->screen = NULL;
@@ -1568,7 +1567,6 @@ bool enterFullscreen() {
 static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
                             struct app_os_window *os_window)
 {
-    static bool resize_xcb_event_last = false;
     while (!os_window->app_data.quit)
     {
         update_keypress();
@@ -1585,28 +1583,11 @@ static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device
         // save original state of each modifyed button and check if it was modifyed twice
         bool save_map[0xff + 1][3] = {0};
         bool state_map[0xff + 1][2] = {0};
-        os_window->resize_xcb_event = false;
         while (event)
         {
             app_handle_xcb_event(os_window, event, save_map, state_map);
             free(event);
             event = xcb_poll_for_event(os_window->connection);
-        }
-
-        // try to dodge X11 bug, resizing only by Vulkan event and only next frame after XCB resize event (it still
-        // happens but less) https://github.com/KhronosGroup/Vulkan-Samples/issues/250
-        bool last_resize_tmp = os_window->resize_xcb_event;
-        if ((os_window->resize_xcb_event) || (resize_xcb_event_last))
-        {
-            os_window->resize_xcb_event = true;
-        }
-        if ((!last_resize_tmp) && (resize_xcb_event_last))
-        {
-            resize_xcb_event_last = false;
-        }
-        else
-        {
-            resize_xcb_event_last = true;
         }
 
         if (keyboard_need_update)
@@ -1635,17 +1616,9 @@ static void render_loop_xcb(struct vk_physical_device *phy_dev, struct vk_device
         {
             if ((!os_window->is_minimized) && os_window->resize_event)
             {
-                // try to dodge X11 bug, resizing only by Vulkan event and only next frame after XCB resize event (it
-                // still happens but less) https://github.com/KhronosGroup/Vulkan-Samples/issues/250
-                if (!os_window->resize_xcb_event)
-                {
-                    on_window_resize(phy_dev, dev, &essentials, swapchain, &render_data,
-                                     os_window); // execute draw or resize per frame, not together
-                }
-                else
-                {
-                    sleep_ms(16);
-                }
+                on_window_resize(phy_dev, dev, &essentials, swapchain, &render_data,
+                                 os_window); // execute draw or resize per frame, not together
+                os_window->resize_event=false;
             }
         }
         if (os_window->is_minimized)

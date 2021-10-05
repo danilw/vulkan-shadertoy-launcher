@@ -195,7 +195,6 @@ struct app_os_window {
     xcb_screen_t *screen;
     xcb_window_t xcb_window;
     xcb_intern_atom_reply_t *atom_wm_delete_window;
-    bool resize_xcb_event;
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     struct wl_display *display;
     struct wl_registry *registry;

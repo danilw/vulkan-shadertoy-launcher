@@ -117,7 +117,7 @@ static void app_handle_xcb_event(struct app_os_window *os_window, const xcb_gene
             if((os_window->app_data.iResolution[0]<=1)||(os_window->app_data.iResolution[1]<=1)){
                 os_window->is_minimized = true;
             }else{
-                os_window->resize_xcb_event=true;
+                os_window->resize_event=true;
             }
         }
     } break;
