@@ -79,6 +79,8 @@ static inline vk_error vk_get_dev(struct vk_physical_device *phy_dev, struct vk_
             sizeof extension_names / sizeof *extension_names);
 }
 
+// gcc 11 has Wstringop-overflow warning here, but this is GCC bug look like 
+// look https://stackoverflow.com/questions/69426070/gcc-11-order-of-arguments-triggers-false-positive-wstringop-overflow-is-this-bu
 static vk_error vk_setup(struct vk_physical_device *phy_dev, struct vk_device *dev, VkQueueFlags qflags, uint32_t create_count)
 {
     VkDeviceQueueCreateInfo queue_info[VK_MAX_QUEUE_FAMILY];

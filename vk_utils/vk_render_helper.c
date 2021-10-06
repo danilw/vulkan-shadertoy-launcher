@@ -89,8 +89,7 @@ VkResult vk_render_start(struct vk_render_essentials *essentials, struct vk_devi
         return res;
     }
     else if (res == VK_SUBOPTIMAL_KHR)
-        printf("Did you change the window size?  I didn't recreate the swapchains,\n"
-                "so the presentation is now suboptimal.\n");
+        printf("presentation is suboptimal.\n");
     else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
       // this is not error, this is resize event for AMD hardware
       return res;
