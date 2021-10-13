@@ -9,36 +9,92 @@ void vk_exit(VkInstance vk)
     vkDestroyInstance(vk, NULL);
 }
 
-vk_error vk_enumerate_devices(VkInstance vk, struct vk_physical_device *devs, uint32_t *count)
+vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_physical_device *devs, uint32_t *idx, bool use_idx)
 {
-    VkPhysicalDevice *phy_devs;
-    phy_devs = malloc(*count * sizeof(VkPhysicalDevice));
+    
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
+    uint32_t count = 0;
+    
+    res = vkEnumeratePhysicalDevices(vk, &count, NULL);
+    vk_error_set_vkresult(&retval, res);
+    if (res < 0) {
+        return retval;
+    }
+    if (count < 1){
+        printf("No Vulkan device found.\n");
+        vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
+        return retval;
+    }
+    
+    VkPhysicalDevice *phy_devs;
+    phy_devs = malloc(count * sizeof(VkPhysicalDevice));
+    
 
-    res = vkEnumeratePhysicalDevices(vk, count, phy_devs);
+    res = vkEnumeratePhysicalDevices(vk, &count, phy_devs);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
         free(phy_devs);
         phy_devs = NULL;
         return retval;
     }
-
-    for (uint32_t i = 0; i < *count; ++i)
+    
+    for (uint32_t i = 0; i < count && (!use_idx); i++)
     {
-        devs[i].physical_device = phy_devs[i];
-
-        vkGetPhysicalDeviceProperties(devs[i].physical_device, &devs[i].properties);
-        vkGetPhysicalDeviceFeatures(devs[i].physical_device, &devs[i].features);
-        vkGetPhysicalDeviceMemoryProperties(devs[i].physical_device, &devs[i].memories);
-
         uint32_t qfc = 0;
-        devs[i].queue_family_count = VK_MAX_QUEUE_FAMILY;
-        vkGetPhysicalDeviceQueueFamilyProperties(devs[i].physical_device, &qfc, NULL);
-        vkGetPhysicalDeviceQueueFamilyProperties(devs[i].physical_device, &devs[i].queue_family_count, devs[i].queue_families);
-
-        devs[i].queue_families_incomplete = devs[i].queue_family_count < qfc;
+        vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc, NULL);
+        if (qfc < 1)continue;
+        
+        VkQueueFamilyProperties *queue_family_properties;
+        queue_family_properties = malloc(qfc * sizeof(VkQueueFamilyProperties));
+        
+        vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc, queue_family_properties);
+        
+        for (uint32_t j = 0; j < qfc; j++)
+        {
+            VkBool32 supports_present;
+            vkGetPhysicalDeviceSurfaceSupportKHR(phy_devs[i], j, *surface, &supports_present);
+            
+            if ((queue_family_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supports_present)
+            {
+              *idx = i;
+              use_idx = true;
+              break;
+            }
+        }
+        free(queue_family_properties);
     }
+    if (!use_idx){
+        printf("Not found suitable queue which supports graphics.\n");
+        vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
+        free(phy_devs);
+        phy_devs = NULL;
+        return retval;
+    }
+    if (*idx >= count){
+        printf("Wrong GPU index %lu, max devices count %lu\n", (unsigned long)*idx, (unsigned long) count);
+        vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
+        free(phy_devs);
+        phy_devs = NULL;
+        return retval;
+    }
+    
+    printf("Using GPU device %lu\n", (unsigned long) *idx);
+
+
+    devs[0].physical_device = phy_devs[*idx];
+
+    vkGetPhysicalDeviceProperties(devs[0].physical_device, &devs[0].properties);
+    vkGetPhysicalDeviceFeatures(devs[0].physical_device, &devs[0].features);
+    vkGetPhysicalDeviceMemoryProperties(devs[0].physical_device, &devs[0].memories);
+
+    uint32_t qfc = 0;
+    devs[0].queue_family_count = VK_MAX_QUEUE_FAMILY;
+    vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device, &qfc, NULL);
+    vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device, &devs[0].queue_family_count, devs[0].queue_families);
+
+    devs[0].queue_families_incomplete = devs[0].queue_family_count < qfc;
+    
     free(phy_devs);
     phy_devs = NULL;
     return retval;
@@ -325,7 +381,8 @@ vk_error vk_get_dev_ext(struct vk_physical_device *phy_dev, struct vk_device *de
     return retval;
 }
 
-VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct app_os_window *os_window){
+vk_error vk_create_surface(VkInstance vk, VkSurfaceKHR *surface, struct app_os_window *os_window){
+    vk_error retval = VK_ERROR_NONE;
     VkResult res;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     VkWin32SurfaceCreateInfoKHR createInfo;
@@ -335,7 +392,7 @@ VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct
     createInfo.hinstance = os_window->connection;
     createInfo.hwnd = os_window->window;
 
-    res = vkCreateWin32SurfaceKHR(vk, &createInfo, NULL, &swapchain->surface);
+    res = vkCreateWin32SurfaceKHR(vk, &createInfo, NULL, surface);
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
     VkXcbSurfaceCreateInfoKHR createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
@@ -344,7 +401,7 @@ VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct
     createInfo.connection = os_window->connection;
     createInfo.window = os_window->xcb_window;
     
-    res = vkCreateXcbSurfaceKHR(vk, &createInfo, NULL, &swapchain->surface);
+    res = vkCreateXcbSurfaceKHR(vk, &createInfo, NULL, surface);
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     VkWaylandSurfaceCreateInfoKHR createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
@@ -353,9 +410,10 @@ VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct
     createInfo.display = os_window->display;
     createInfo.surface = os_window->surface;
 
-    res = vkCreateWaylandSurfaceKHR(vk, &createInfo, NULL, &swapchain->surface);
+    res = vkCreateWaylandSurfaceKHR(vk, &createInfo, NULL, surface);
 #endif
-    return res;
+    vk_error_set_vkresult(&retval, res);
+    return retval;
 }
 
 vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, struct vk_device *dev,
@@ -365,22 +423,11 @@ vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, str
     VkResult res;
     
     VkSwapchainKHR oldSwapchain = swapchain->swapchain;
-    
-    if (oldSwapchain == VK_NULL_HANDLE) 
-    {
-        *swapchain = (struct vk_swapchain){0};
-        
-        res=vk_create_surface(vk, swapchain, os_window);
-        vk_error_set_vkresult(&retval, res);
-        if (res)
-            return retval;
-    }
 
     res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phy_dev->physical_device, swapchain->surface, &swapchain->surface_caps);
     vk_error_set_vkresult(&retval, res);
     if (res)
         return retval;
-
 
     uint32_t image_count = swapchain->surface_caps.minImageCount + thread_count - 1;
     if (swapchain->surface_caps.maxImageCount < image_count && swapchain->surface_caps.maxImageCount != 0)

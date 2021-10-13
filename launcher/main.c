@@ -1346,10 +1346,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     else if (res == VK_ERROR_SURFACE_LOST_KHR)
     {
         vkDestroySurfaceKHR(vk, swapchain->surface, NULL);
-        VkResult tres;
-        tres = vk_create_surface(vk, swapchain, os_window);
-        vk_error_set_vkresult(&retval, tres);
-        if (tres)
+        retval = vk_create_surface(vk, &swapchain->surface, os_window);
+        if (!vk_error_is_success(&retval))
             return false;
         os_window->resize_event = true;
         res = 0;
@@ -1485,10 +1483,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     else if (res == VK_ERROR_SURFACE_LOST_KHR)
     {
         vkDestroySurfaceKHR(vk, swapchain->surface, NULL);
-        VkResult tres;
-        tres = vk_create_surface(vk, swapchain, os_window);
-        vk_error_set_vkresult(&retval, tres);
-        if (tres)
+        retval = vk_create_surface(vk, &swapchain->surface, os_window);
+        if (!vk_error_is_success(&retval))
             return false;
         os_window->resize_event = true;
         res = 0;
@@ -1687,6 +1683,7 @@ void print_usage(char *name)
            "\t\t\t\tVK_PRESENT_MODE_FIFO_RELAXED_KHR = %d\n"
            "\t[--debug]\n"
            "\t[--reload_shaders] will reload shaders form file on resize\n"
+           "\t[--gpu <index(0/1/2/etc)>] use selected GPU to render\n"
            "Control: Keyboard 1-debug, 2-vsynk 60fps, Space-pause\n",
            name, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_KHR,
            VK_PRESENT_MODE_FIFO_RELAXED_KHR);
@@ -1785,7 +1782,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     int retval = EXIT_FAILURE;
 
     init_win_params(&os_window);
-    uint32_t dev_count = 1;
+    uint32_t dev_index = 0;
+    bool use_gpu_idx = false;
     os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
     if (argc > 1)
@@ -1804,6 +1802,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
         if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1))
         {
             os_window.present_mode = atoi(argv[i + 1]);
+            i++;
+            continue;
+        }
+        if ((strcmp(argv[i], "--gpu") == 0) && (i < argc - 1))
+        {
+            dev_index = atoi(argv[i + 1]);
+            use_gpu_idx = true;
             i++;
             continue;
         }
@@ -1844,19 +1849,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
         vk_error_printf(&res, "Could not initialize Vulkan\n");
         return retval;
     }
-
-    res = vk_enumerate_devices(vk, &phy_dev, &dev_count);
+    
+    app_create_window(&os_window);
+    
+    res = vk_create_surface(vk, &swapchain.surface, &os_window);
+    if (vk_error_is_error(&res))
+    {
+        vk_error_printf(&res, "Could not create surface.\n");
+        exit_cleanup(vk, NULL, NULL, &os_window);
+        return retval;
+    }
+    
+    res = vk_enumerate_devices(vk, &swapchain.surface, &phy_dev, &dev_index, use_gpu_idx);
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not enumerate devices\n");
-        vk_exit(vk);
-        return retval;
-    }
-
-    if (dev_count < 1)
-    {
-        printf("No graphics card? Shame on you\n");
-        vk_exit(vk);
+        vkDestroySurfaceKHR(vk, swapchain.surface, NULL);
+        exit_cleanup(vk, NULL, NULL, &os_window);
         return retval;
     }
 
@@ -1865,12 +1874,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
-        vk_cleanup(&dev);
-        vk_exit(vk);
+        exit_cleanup(vk, &dev, &swapchain, &os_window);
         return retval;
     }
-
-    app_create_window(&os_window);
 
     swapchain.swapchain = VK_NULL_HANDLE;
     res = vk_get_swapchain(vk, &phy_dev, &dev, &swapchain, &os_window, 1, &os_window.present_mode);
@@ -1903,12 +1909,13 @@ int main(int argc, char **argv)
     vk_error res;
     int retval = EXIT_FAILURE;
     VkInstance vk;
-    struct vk_physical_device phy_dev;
-    struct vk_device dev;
+    struct vk_physical_device phy_dev= {0};
+    struct vk_device dev= {0};
     struct vk_swapchain swapchain = {0};
     struct app_os_window os_window;
     init_win_params(&os_window);
-    uint32_t dev_count = 1;
+    uint32_t dev_index = 0;
+    bool use_gpu_idx = false;
     os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
     if (argc > 1)
@@ -1925,6 +1932,13 @@ int main(int argc, char **argv)
         if ((strcmp(argv[i], "--present_mode") == 0) && (i < argc - 1))
         {
             os_window.present_mode = atoi(argv[i + 1]);
+            i++;
+            continue;
+        }
+        if ((strcmp(argv[i], "--gpu") == 0) && (i < argc - 1))
+        {
+            dev_index = atoi(argv[i + 1]);
+            use_gpu_idx = true;
             i++;
             continue;
         }
@@ -1948,19 +1962,31 @@ int main(int argc, char **argv)
         vk_error_printf(&res, "Could not initialize Vulkan\n");
         return retval;
     }
-
-    res = vk_enumerate_devices(vk, &phy_dev, &dev_count);
+    
+#if defined(VK_USE_PLATFORM_XCB_KHR)
+    printf("Init XCB\n");
+    app_init_connection(&os_window);
+    app_create_xcb_window(&os_window);
+#else
+    printf("Init Wayland\n");
+    initWaylandConnection(&os_window);
+    setupWindow(&os_window);
+#endif
+    
+    res = vk_create_surface(vk, &swapchain.surface, &os_window);
+    if (vk_error_is_error(&res))
+    {
+        vk_error_printf(&res, "Could not create surface.\n");
+        exit_cleanup(vk, NULL, NULL, &os_window);
+        return retval;
+    }
+    
+    res = vk_enumerate_devices(vk, &swapchain.surface, &phy_dev, &dev_index, use_gpu_idx);
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not enumerate devices\n");
-        vk_exit(vk);
-        return retval;
-    }
-
-    if (dev_count < 1)
-    {
-        printf("No graphics card? Shame on you\n");
-        vk_exit(vk);
+        vkDestroySurfaceKHR(vk, swapchain.surface, NULL);
+        exit_cleanup(vk, NULL, NULL, &os_window);
         return retval;
     }
 
@@ -1968,15 +1994,10 @@ int main(int argc, char **argv)
     if (vk_error_is_error(&res))
     {
         vk_error_printf(&res, "Could not setup logical device, command pools and queues\n");
-        vk_cleanup(&dev);
-        vk_exit(vk);
+        exit_cleanup(vk, &dev, &swapchain, &os_window);
         return retval;
     }
-#if defined(VK_USE_PLATFORM_XCB_KHR)
-    printf("Init XCB\n");
-    app_init_connection(&os_window);
-    app_create_xcb_window(&os_window);
-
+    
     swapchain.swapchain = VK_NULL_HANDLE;
     res = vk_get_swapchain(vk, &phy_dev, &dev, &swapchain, &os_window, 1, &os_window.present_mode);
     if (vk_error_is_error(&res))
@@ -1987,23 +2008,11 @@ int main(int argc, char **argv)
     }
 
     render_loop_init(&phy_dev, &dev, &swapchain, &os_window);
+
+#if defined(VK_USE_PLATFORM_XCB_KHR)
     render_loop_xcb(&phy_dev, &dev, &swapchain, &os_window);
 #else
-    printf("Init Wayland\n");
-    initWaylandConnection(&os_window);
-    setupWindow(&os_window);
-    swapchain.swapchain = VK_NULL_HANDLE;
-    res = vk_get_swapchain(vk, &phy_dev, &dev, &swapchain, &os_window, 1, &os_window.present_mode);
-    if (vk_error_is_error(&res))
-    {
-        vk_error_printf(&res, "Could not create surface and swapchain\n");
-        exit_cleanup(vk, &dev, &swapchain, &os_window);
-        return retval;
-    }
-    
-    render_loop_init(&phy_dev, &dev, &swapchain, &os_window);
     render_loop_wayland(&phy_dev, &dev, &swapchain, &os_window);
-    
 #endif
 
     retval = 0;

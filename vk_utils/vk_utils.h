@@ -34,7 +34,7 @@
 
 void vk_exit(VkInstance vk);
 
-vk_error vk_enumerate_devices(VkInstance vk, struct vk_physical_device *devs, uint32_t *count);
+vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_physical_device *devs, uint32_t *idx, bool use_idx);
 
 vk_error vk_get_commands(struct vk_physical_device *phy_dev, struct vk_device *dev, VkDeviceQueueCreateInfo queue_info[], uint32_t queue_info_count, uint32_t create_count);
 
@@ -97,7 +97,7 @@ static vk_error vk_setup(struct vk_physical_device *phy_dev, struct vk_device *d
 
 }
 
-VkResult vk_create_surface(VkInstance vk, struct vk_swapchain *swapchain, struct app_os_window *os_window);
+vk_error vk_create_surface(VkInstance vk, VkSurfaceKHR *surface, struct app_os_window *os_window);
 
 vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, struct vk_device *dev,
         struct vk_swapchain *swapchain, struct app_os_window *os_window, uint32_t thread_count, VkPresentModeKHR *present_mode);
