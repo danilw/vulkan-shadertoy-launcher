@@ -1909,8 +1909,8 @@ int main(int argc, char **argv)
     vk_error res;
     int retval = EXIT_FAILURE;
     VkInstance vk;
-    struct vk_physical_device phy_dev= {0};
-    struct vk_device dev= {0};
+    struct vk_physical_device phy_dev = {0};
+    struct vk_device dev = {0};
     struct vk_swapchain swapchain = {0};
     struct app_os_window os_window;
     init_win_params(&os_window);

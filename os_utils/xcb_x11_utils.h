@@ -189,6 +189,7 @@ static void app_create_xcb_window(struct app_os_window *os_window) {
 
     const uint32_t coords[] = { 100, 100 };
     xcb_configure_window(os_window->connection, os_window->xcb_window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
+    xcb_flush(os_window->connection);
     gen_key_map(os_window->connection);
 }
 
