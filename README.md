@@ -12,7 +12,7 @@ Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_E
 
 **Compiler/platform support** - VisualStudio, GCC/Clang, Mingw. OS Windows and Linux(X11/Wayland)
 
-**Multiple GPU support** - Added launch option --gpu X to use selected GPU device X. Value X is 0 or 1 or 2 etc. By default, selected first GPU which supports graphics and presentation.
+**Multiple GPU support** - Added launch option `--gpu X` to use selected GPU device X. Value `X` is 0 or 1 or 2 etc. By default, selected first GPU which supports graphics and presentation.
 
 ### **Bin builds** download:
 
