@@ -879,8 +879,8 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
 static void exit_cleanup(VkInstance vk, struct vk_device *dev, struct vk_swapchain *swapchain,
                          struct app_os_window *os_window)
 {
-    vk_free_swapchain(vk, dev, swapchain);
-    vk_cleanup(dev);
+    if(swapchain)vk_free_swapchain(vk, dev, swapchain);
+    if(dev)vk_cleanup(dev);
 #if defined(VK_USE_PLATFORM_XCB_KHR)
     xcb_destroy_window(os_window->connection, os_window->xcb_window);
     xcb_disconnect(os_window->connection);
