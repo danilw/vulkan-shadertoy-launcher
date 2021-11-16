@@ -124,7 +124,7 @@ This project includes **prebuild files:**
 
 ___
 
-### Bugs:
+# Bugs:
 
 1. **GPU selection can be not correct in some cases** (disabled GPU can be selected) - this launcher filter GPU device and select **first GPU which support Graphic and Presentation** however GPU driver **on Linux (Mesa AMD/Intel) drivers report that GPU has "Graphic and Presentation" when GPU actually disabled** and this launcher select this GPU, result is this launcher write error to terminal - `A whole second and no image.  I give up.` and freeze or crash. This is up to GPU drivers, and bugs there, I wont fix it. (I do not know proper fix for all posible cases because if I filter by "DISCRETE_GPU", there still can be unique cases where DISCRETE disabled and driver report its status incorrect or DISCRETE not connected to monitor and still report it has Graphic... etc...) 
 This launcher has option `--gpu X` to select "actually working GPU" in situation where selected not correct GPU.
