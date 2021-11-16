@@ -81,7 +81,7 @@ ___
 
 `git clone https://github.com/danilw/vulkan-shadertoy-launcher`
 
-**Use cmake to build.** 
+### Use cmake to build:
 
 Using VS2019 in the Windows (open links to see tutorial screenshot):
 
@@ -123,6 +123,16 @@ This project includes **prebuild files:**
 *build_scripts/yariv_shaders/bin* folder with pre-build yariv shaders.
 
 ___
+
+### Bugs:
+
+1. **GPU selection can be not correct in some cases** (disabled GPU can be selected) - this launcher filter GPU device and select **first GPU which support Graphic and Presentation** however GPU driver **on Linux (Mesa AMD/Intel) drivers report that GPU has "Graphic and Presentation" when GPU actually disabled** and this launcher select this GPU, result is this launcher write error to terminal - `A whole second and no image.  I give up.` and freeze or crash. This is up to GPU drivers, and bugs there, I wont fix it. (I do not know proper fix for all posible cases because if I filter by "DISCRETE_GPU", there still can be unique cases where DISCRETE disabled and driver report its status incorrect or DISCRETE not connected to monitor and still report it has Graphic... etc...) 
+This launcher has option `--gpu X` to select "actually working GPU" in situation where selected not correct GPU.
+2. **Bugs because Push Constants** used by this launcher. Instead of `uniform` to send data to shader such as `iTime/iResolution/iFrame.. etc`. I use **less than 64 bytes of push constant** when - *The **Vulkan spec guarantees** that drivers will support at least **128 bytes** of push constants.* In ***"real use of this launcher on various platforms" I saw no bugs at all***, but I saw bugs that may happens because push constant used - **[read my page Push constants bugs]()**. (link TODO)
+3. Update to latest GPU driver. in Windows for AMD you may need to install Recomended+Optional drivers (because in Recomended Vulkan suport can be disabled).
+
+___
+
 **Images:** 
 
 ![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/launcher_v1_1.png)
