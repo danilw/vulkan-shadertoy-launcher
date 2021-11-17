@@ -16,6 +16,9 @@ vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_ph
     VkResult res;
     uint32_t count = 0;
     
+    bool last_use_idx=false;
+    uint32_t last_idx=0; // last non DISCRETE_GPU
+    
     res = vkEnumeratePhysicalDevices(vk, &count, NULL);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
@@ -57,13 +60,27 @@ vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_ph
             
             if ((queue_family_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supports_present)
             {
-              *idx = i;
-              use_idx = true;
-              break;
+              VkPhysicalDeviceProperties pr;
+              vkGetPhysicalDeviceProperties(phy_devs[*idx], &pr);
+              if(pr.deviceType==VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU){
+                *idx = i;
+                use_idx = true;
+                break;
+              }else{
+                last_use_idx = true;
+                last_idx = i;
+                continue;
+              }
             }
         }
         free(queue_family_properties);
     }
+    
+    if(last_use_idx&&(!use_idx)){
+      use_idx = true;
+      *idx = last_idx;
+    }
+    
     if (!use_idx){
         printf("Not found suitable queue which supports graphics.\n");
         vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
@@ -81,13 +98,16 @@ vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_ph
     
     printf("Using GPU device %lu\n", (unsigned long) *idx);
 
-
     devs[0].physical_device = phy_devs[*idx];
-
+    
     vkGetPhysicalDeviceProperties(devs[0].physical_device, &devs[0].properties);
     vkGetPhysicalDeviceFeatures(devs[0].physical_device, &devs[0].features);
     vkGetPhysicalDeviceMemoryProperties(devs[0].physical_device, &devs[0].memories);
-
+    
+    printf("Vulkan GPU - %s: %s (id: 0x%04X) from vendor 0x%04X [driver version: 0x%04X, API version: 0x%04X]\n",
+        vk_VkPhysicalDeviceType_string(devs[0].properties.deviceType), devs[0].properties.deviceName,
+        devs[0].properties.deviceID, devs[0].properties.vendorID, devs[0].properties.driverVersion, devs[0].properties.apiVersion);
+    
     uint32_t qfc = 0;
     devs[0].queue_family_count = VK_MAX_QUEUE_FAMILY;
     vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device, &qfc, NULL);
