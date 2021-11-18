@@ -124,15 +124,6 @@ This project includes **prebuild files:**
 
 ___
 
-# Bugs:
-
-1. **GPU selection can be not correct in some cases** (GPU that not working can be selected) - this launcher filter GPU device and select **first GPU which support Graphic and Presentation prioritizing DISCRETE_GPU** however GPU driver **on Linux (Mesa AMD/Intel) report that GPU has "Graphic and Presentation" when GPU actually disabled** and this launcher select this GPU, result is this launcher write error to terminal - `A whole second and no image.  I give up.` and freeze or crash. This is up to GPU drivers, and bugs there.
-This launcher has launch option `--gpu X` to select "actually working GPU" in situation where selected not correct GPU.
-2. **Bugs because Push Constants** used by this launcher. Instead of `uniform` to send data to shader such as `iTime/iResolution/iFrame.. etc`. I use **less than 64 bytes of push constant** when - *The **Vulkan spec guarantees** that drivers will support at least **128 bytes** of push constants.* In ***"real use of this launcher on various platforms" I saw no bugs at all***, but I saw bugs that may happens because push constant used - **[read my page Push constants bugs]()**. (link TODO)
-3. Update to latest GPU driver. in Windows for AMD you may need to install Recomended+Optional drivers (because in Recomended Vulkan suport can be disabled).
-
-___
-
 **Images:** 
 
 ![img](https://danilw.github.io/GLSL-howto/vulkan_sh_launcher/launcher_v1_1.png)
