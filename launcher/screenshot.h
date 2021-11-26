@@ -196,7 +196,7 @@ vk_error vk_render_transition_images_screenshot_swapchain_end(struct vk_device *
 }
 
 // RGBA BMP from https://en.wikipedia.org/wiki/BMP_file_format
-unsigned char ev(uint32_t v) {
+unsigned char ev(int32_t v) {
   static uint32_t counter = 0;
   return (unsigned char)((v) >> ((8*(counter++))%32));
 }
@@ -212,27 +212,26 @@ void write_bmp(uint32_t w, uint32_t h, uint8_t *rgba) {
     
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
-            img[(x + y * w)*4 + 2] = rgba[(x+y*w)*4+0];
-            img[(x + y * w)*4 + 1] = rgba[(x+y*w)*4+1];
-            img[(x + y * w)*4 + 0] = rgba[(x+y*w)*4+2];
-            img[(x + y * w)*4 + 3] = rgba[(x+y*w)*4+3];
+            img[(x + y * w)*4 + 3] = rgba[(x+(h-1-y)*w)*4+0];
+            img[(x + y * w)*4 + 2] = rgba[(x+(h-1-y)*w)*4+1];
+            img[(x + y * w)*4 + 1] = rgba[(x+(h-1-y)*w)*4+2];
+            img[(x + y * w)*4 + 0] = rgba[(x+(h-1-y)*w)*4+3];
         }
     }
     
-    unsigned char bmpfileheader[14] = {'B','M', ev(filesize),ev(filesize),ev(filesize),ev(filesize), 0,0,0,0, 108+14, 0, 0, 0};
+    unsigned char bmpfileheader[14] = {'B','M', ev(filesize),ev(filesize),ev(filesize),ev(filesize), 0,0,0,0, 108+14,0,0,0};
 
     unsigned char bmpinfoheader[108] = {108,0,0,0, 
-                                        ev(w),ev(w),ev(w),ev(w), ev(h),ev(h),ev(h),ev(h), 1,0, 32,0, 3,0,0,0, ev(w*h*4),ev(w*h*4),ev(w*h*4),ev(w*h*4),
+                                        ev(w),ev(w),ev(w),ev(w), ev(-((int32_t)h)),ev(-((int32_t)h)),ev(-((int32_t)h)),ev(-((int32_t)h)), 1,0, 32,0, 3,0,0,0, ev(w*h*4),ev(w*h*4),ev(w*h*4),ev(w*h*4),
                                         ev(0x0b13),ev(0x0b13),ev(0x0b13),ev(0x0b13), ev(0x0b13),ev(0x0b13),ev(0x0b13),ev(0x0b13),
-                                        0,0,0,0, 0,0,0,0, 
                                         0,0,0,0, 0,0,0,0, 
                                         0,0,0,0xff, 0,0,0xff,0, 0,0xff,0,0, 0xff,0,0,0,
                                         ev(0x57696E20),ev(0x57696E20),ev(0x57696E20),ev(0x57696E20), 
-                                        0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 
+                                        0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 
       };
     
     char file_name[80] = {0};
-    sprintf(file_name, "screenshot_%d.png", scr_id++);
+    sprintf(file_name, "screenshot_%d.bmp", scr_id++);
     
     f = fopen(file_name, "wb");
     fwrite(bmpfileheader, 1, 14, f);
@@ -262,7 +261,7 @@ vk_error make_screenshot(struct vk_physical_device *phy_dev, struct vk_device *d
     }
     
     uint32_t support_format_list[4] = {VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_R8G8B8A8_UNORM};
-    bool supported=false;
+    bool supported = false;
     for (int i = 0; (i < 4)&&(!supported); i++){
         if(swapchain->surface_format.format==support_format_list[i])supported=true;
     }
