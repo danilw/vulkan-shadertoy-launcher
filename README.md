@@ -14,6 +14,8 @@ Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_E
 
 **Multiple GPU support** - Added launch option `--gpu X` to use selected GPU device X. Value `X` is 0 or 1 or 2 etc. By default, selected first GPU which supports graphics and presentation prioritizing *DISCRETE_GPU*.
 
+**Wayland note** - by default selected discrete GPU and if it Nvidia it does not support Wayland surface, to launch Wayland build select gpu that support Wayland in launch option `--gpu 0` 0/1/2 etc.
+
 ### **Bin builds** download:
 
 **Download [from releases](https://github.com/danilw/vulkan-shadertoy-launcher/releases)**.
