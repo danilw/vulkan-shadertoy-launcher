@@ -23,6 +23,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
           vec4 tc;
           mainImage_keyboard(tc,(uv*iResolution.xy));
           col.rgb=col.rgb*0.35+tc.rgb;
+          col.a+=dot(col.rgb,vec3(1.))/3.;
           break;
         case 2:col=vec4(texture(iChannel2,uv).rgb,1.);break;
         case 3:col=vec4(texture(iChannel3,uv).rgb,1.);break;

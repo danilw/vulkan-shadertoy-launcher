@@ -592,7 +592,11 @@ vk_error vk_render_init_texture(struct vk_physical_device *phy_dev, struct vk_de
         return retval;
     
     if(image->mipmaps)
+    {
         retval = vk_render_transition_images_mipmaps(phy_dev, dev, essentials, image, VK_IMAGE_ASPECT_COLOR_BIT, name);
+        if (retval.error.type==VK_ERROR_ERRNO)
+            retval = vk_render_transition_images(dev, essentials, image, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout, VK_IMAGE_ASPECT_COLOR_BIT, name);
+    }
     else
         retval = vk_render_transition_images(dev, essentials, image, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout, VK_IMAGE_ASPECT_COLOR_BIT, name);
     

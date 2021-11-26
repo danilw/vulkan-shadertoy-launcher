@@ -13,6 +13,7 @@
 // IMAGE_TEXTURES
 // USE_MIPMAPS
 // YARIV_SHADER
+// USE_SCREENSHOT
 // buffers is VK_FORMAT_R32G32B32A32_SFLOAT
 
 // FPS_LOCK(30) hotkey function 30 FPS lock (no Vsync)
@@ -69,6 +70,9 @@ static bool main_image_srgb = false; // srgb surface fix
 
 // linear or mipmap for textures
 #define USE_MIPMAPS true
+
+// use save screenshot functions, default hotkey Z
+#define USE_SCREENSHOT
 
 // keyboard is texture that send from this data
 static bool keyboard_map[0xff][3] = {0}; //[ASCII code][0: current state of key, 1: Keypress, 2: toggle for key]
@@ -214,6 +218,10 @@ static void update_key_map(int w, int h, bool val);
 
 #include "textures.h"
 
+#ifdef USE_SCREENSHOT
+#include "screenshot.h"
+#endif
+
 static void update_key_map(int w, int h, bool val)
 {
     keyboard_map[w][h] = val;
@@ -265,9 +273,11 @@ static bool update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct 
 
 static bool fullscreen = false;
 static bool fs_once = true;
+static bool key_screenshot_once = true;
+static bool screenshot_once = false;
 static void check_hotkeys(struct app_os_window *os_window)
 {
-    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70, Key_f11 = 122;
+    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70, Key_z = 90, Key_f11 = 122;
     if (keyboard_map[Key_Escape][1])
         os_window->app_data.quit = true;
     if (keyboard_map[Key_Space][1])
@@ -276,6 +286,10 @@ static void check_hotkeys(struct app_os_window *os_window)
         os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
     if (keyboard_map[Key_1][1])
         os_window->fps_lock = !os_window->fps_lock;
+    if (keyboard_map[Key_z][1]) {
+        if (key_screenshot_once) { screenshot_once = true; key_screenshot_once = false; }
+    }
+    else key_screenshot_once = true;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
     //example resize event for Wayland
     if (keyboard_map[Key_f][1]){
@@ -1492,7 +1506,16 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
 
     if (res)
         return false;
-
+    
+#ifdef USE_SCREENSHOT
+    if(screenshot_once){
+      screenshot_once = false;
+      retval = make_screenshot(phy_dev, dev, swapchain, &essentials, image_index);
+      if (!vk_error_is_success(&retval))
+            return false;
+    }
+#endif
+    
     update_params(&os_window->app_data, os_window->fps_lock);
     render_index = (render_index + 1) % 2;
     os_window->pause_refresh = false;
