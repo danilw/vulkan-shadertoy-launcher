@@ -464,7 +464,8 @@ vk_error vk_get_swapchain(VkInstance vk, struct vk_physical_device *phy_dev, str
         return retval;
     }
     
-    VkSurfaceFormatKHR surface_format[surface_format_count];
+    VkSurfaceFormatKHR surface_format[184];
+    if(surface_format_count>=184) surface_format_count = 184-1;
     
     res = vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev->physical_device, swapchain->surface, &surface_format_count, &surface_format[0]);
     
