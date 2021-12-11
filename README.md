@@ -33,13 +33,15 @@ ___
 
 2. **Open** your shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
-3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers: (but **remember** about **VRAM usage**, **by default I use four RGBA32 buffers**, if you dont need that much look *main.c* code to set number of used buffers)
+3. **Small setup.** If buffers not needed(for shadertoy-test template), can be used simple dummy code for unused buffers: 
 ```
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     discard;
 }
 ```
+*For release, when you want build/pack single minimal application* -  **remember** about **VRAM usage**, **by default I use four(x2 double buffering) RGBA32 buffers**, if you dont need that much look *main.c* code to set number of used buffers)
+
 *shadertoy textures* can be found on [Shadertoy Unofficial](https://shadertoyunofficial.wordpress.com/2019/07/23/shadertoy-media-files/)
 
 ### Binding:
