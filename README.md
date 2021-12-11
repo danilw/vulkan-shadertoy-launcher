@@ -33,7 +33,7 @@ ___
 
 2. **Open** your shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
-3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers:
+3. **Small setup.** If buffers not needed, can be used simple dummy code for unused buffers: (but **remember** about **VRAM usage**, **by default I use four RGBA32 buffers**, if you dont need that much look *main.c* code to set number of used buffers)
 ```
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
