@@ -61,16 +61,15 @@ vk_error vk_enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_ph
             if ((queue_family_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supports_present)
             {
               VkPhysicalDeviceProperties pr;
-              vkGetPhysicalDeviceProperties(phy_devs[*idx], &pr);
+              vkGetPhysicalDeviceProperties(phy_devs[i], &pr);
               if(pr.deviceType==VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU){
                 *idx = i;
                 use_idx = true;
-                break;
               }else{
                 last_use_idx = true;
                 last_idx = i;
-                continue;
               }
+              break;
             }
         }
         free(queue_family_properties);
