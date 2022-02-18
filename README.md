@@ -24,7 +24,7 @@ Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_E
 
 ### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
 
-**Apps that I made using this code:** [glsl auto tetris](https://www.pouet.net/prod.php?which=85052), [glsl card game](https://www.pouet.net/prod.php?which=84806), [likes (glsl game)](https://www.pouet.net/prod.php?which=84805), [Game for Cactus Jam](https://www.shadertoy.com/view/NlXXW2)
+**Apps that I made using this code:** [GLSL Auto Tetris](https://www.pouet.net/prod.php?which=85052), [GLSL Card game in the single shader](https://www.pouet.net/prod.php?which=84806), [likes (GLSL game)](https://www.pouet.net/prod.php?which=84805), [Game for Cactus Jam](https://www.shadertoy.com/view/NlXXW2)
 
 ___
 # How to use:
