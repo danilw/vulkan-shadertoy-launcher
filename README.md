@@ -4,7 +4,9 @@
 
 **Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps. This code does not have Vulkan validation errors (and tested on Nvidia and AMD GPU-s).
 
-*Minimal size* after upx compression - 30Kb, and using less than 1k lines of shader code building with yariv-shaders bin(exe)-size will be ~50Kb.
+~~*Minimal size* after upx compression - 30Kb, and using less than 1k lines of shader code building with yariv-shaders bin(exe)-size will be \~50Kb.~~
+
+***Do not use UPX*** - reason https://github.com/upx/upx/issues/337
 
 **Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
 
