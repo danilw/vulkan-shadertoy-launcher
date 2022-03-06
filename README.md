@@ -8,7 +8,7 @@
 
 ***Do not use UPX*** - reason https://github.com/upx/upx/issues/337
 
-**Dependencies** - Vulkan library(sdk). MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
+**Dependencies for compiling** - Vulkan SDK. MSVS or MinGW compiler for Windows. Linux requires *xcb* and *xcb-keysyms* library or *wayland-devel*.
 
 Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_EXTENSION_NAME` that on 100% devices with Vulkan.
 
@@ -31,7 +31,7 @@ Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_E
 ___
 # How to use:
 
-1. **Download** *Bin build* or build the project.
+1. **Download** *Bin build* or build the project. (notice *empty_template_shadertoy.zip* in Release downloads)
 
 2. **Open** your shadertoy shader and copy-paste its code to `shaders/shadertoy/*.glsl` files.
 
