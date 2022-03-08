@@ -21,7 +21,7 @@
 
 // Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (works in buffers)
 
-// used VK_WITHOUT_DEPTH render pass, if you need depth change to VK_WITH_DEPTH (and remember change VkClearValue clear_values adding depth and stencil clean values there
+// used VK_WITHOUT_DEPTH render pass, if you need depth change to VK_WITH_DEPTH (and remember change VkClearValue clear_values adding depth and stencil clean values there)
 
 // define to not resize offscreen-buf on window resize (buffer size will be same as window on startup)
 // #define NO_RESIZE_BUF
