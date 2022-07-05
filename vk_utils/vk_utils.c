@@ -772,6 +772,7 @@ vk_error vk_create_images(struct vk_physical_device *phy_dev, struct vk_device *
                 .image = images[i].image,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
                 .format = images[i].format,
+                .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A,},
                 .subresourceRange = {
                     .aspectMask = (images[i].usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == 0?
                             VK_IMAGE_ASPECT_COLOR_BIT:
@@ -1540,6 +1541,7 @@ vk_error vk_create_graphics_buffers(struct vk_physical_device *phy_dev, struct v
             .image = graphics_buffers[i].swapchain_image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = format,
+            .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A,},
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel = 0,
