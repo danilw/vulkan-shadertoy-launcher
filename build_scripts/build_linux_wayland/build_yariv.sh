@@ -5,4 +5,4 @@ gcc -DVK_USE_PLATFORM_WAYLAND_KHR -DYARIV_SHADER -Os -s -I. -I/usr/include/wayla
 #clang 
 
 strip VK_shadertoy_wayland_compressed
-upx VK_shadertoy_wayland_compressed
+#upx VK_shadertoy_wayland_compressed

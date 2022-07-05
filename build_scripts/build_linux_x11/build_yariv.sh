@@ -5,4 +5,4 @@ gcc -DVK_USE_PLATFORM_XCB_KHR -DYARIV_SHADER -Os -s -I. -fdata-sections -ffuncti
 #clang 
 
 strip VK_shadertoy_compressed
-upx VK_shadertoy_compressed
+#upx VK_shadertoy_compressed
