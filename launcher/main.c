@@ -1230,7 +1230,7 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
     vkCmdPushConstants(cmd_buffer, render_data->buf_layout[buffer_index].pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof render_data->push_constants, &render_data->push_constants);
 
-    vkCmdDrawIndexed(cmd_buffer, 4, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd_buffer, 3, 1, 0, 0, 0);
     vkCmdEndRenderPass(cmd_buffer);
 
     image_barrier = (VkImageMemoryBarrier){
@@ -1483,8 +1483,8 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     vkCmdPushConstants(essentials.cmd_buffer, render_data.main_layout.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                        sizeof render_data.push_constants, &render_data.push_constants);
 
-    // vkCmdDraw(essentials.cmd_buffer, 4, 1, 0, 0);
-    vkCmdDrawIndexed(essentials.cmd_buffer, 4, 1, 0, 0, 0);
+    // vkCmdDraw(essentials.cmd_buffer, 3, 1, 0, 0);
+    vkCmdDrawIndexed(essentials.cmd_buffer, 3, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(essentials.cmd_buffer);
 
