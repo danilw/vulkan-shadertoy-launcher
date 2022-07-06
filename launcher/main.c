@@ -152,9 +152,9 @@ struct render_data
         struct vertex
         {
             float pos[3];
-        } vertices[4];
+        } vertices[3];
 
-        uint16_t indices[4];
+        uint16_t indices[3];
     } objects;
 
     struct shaders_push_constants push_constants;
