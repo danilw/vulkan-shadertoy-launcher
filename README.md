@@ -2,7 +2,7 @@
 
 **what is it** launcher for **shadertoy shaders** in Vulkan.
 
-**Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps. This code does not have Vulkan validation errors (and tested on Nvidia and AMD GPU-s).
+**Use case** - launch your own shaders outside of shadertoy, or create a small single-bin(exe) file with built-in shaders, for demo-like apps. This code does not have Vulkan validation errors (and tested on Nvidia/AMD/Intel GPU-s).
 
 ~~*Minimal size* after upx compression - 30Kb, and using less than 1k lines of shader code building with yariv-shaders bin(exe)-size will be \~50Kb.~~
 
