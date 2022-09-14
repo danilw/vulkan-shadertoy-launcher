@@ -48,7 +48,8 @@ static int resize_size[2] = {1280, 720}; // in Wayland surface should set own si
 
 static bool main_image_srgb = false; // srgb surface fix
 
-// USE_stb_image this define to NOT use stb_image.h (compiled size will be 15Kb smaller)
+// USE_stb_image comment this define to NOT use stb_image.h (compiled size will be 15Kb smaller)
+// USE_stb_image set in CMakeLists.txt this why it commented here, it used if you build from default cmake build
 // when stb_image.h not used - every image is empty(vec4(0.0)) 1x1 pixel look textures.h texture_empty
 //#define USE_stb_image
 
