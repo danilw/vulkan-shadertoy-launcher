@@ -63,6 +63,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 ___
 # Supported:
 
+**TODO** list of missing featres https://github.com/danilw/vulkan-shadertoy-launcher/issues/4
+
 **Full-screen triangle** used to render every buffer, same as on Shadertoy.
 
 **Buffers** *(no mipmap)*, **textures** *(mipmap supported)*, **keyboard**, and **mouse** *(same as on shadertoy)*.
