@@ -42,8 +42,14 @@
 #include "../vk_utils/vk_render_helper.h"
 #include "../os_utils/utils.h"
 
+static int resX = 1280;
+static int resY = 720;
+static bool run_paused = false;
+static bool screenshot_and_close = false;
+
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-static int resize_size[2] = {1280, 720}; // in Wayland surface should set own size
+static int wayland_resize_size[2] = {1280, 720}; // in Wayland surface should set own size
+const int wayland_fullscreen_resize_size[2] = {1920, 1080}; // used in example resize event for walynad surface
 #endif
 
 static bool main_image_srgb = false; // srgb surface fix
@@ -290,8 +296,10 @@ static void check_hotkeys(struct app_os_window *os_window)
         os_window->fps_lock = !os_window->fps_lock;
     if (keyboard_map[Key_z][1]) {
         if (key_screenshot_once) { screenshot_once = true; key_screenshot_once = false; }
-    }
-    else key_screenshot_once = true;
+    } else key_screenshot_once = true;
+    
+    if(run_paused){ run_paused = false; os_window->app_data.pause = true; }
+        
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
     //example resize event for Wayland
     if (keyboard_map[Key_f][1]){
@@ -299,12 +307,12 @@ static void check_hotkeys(struct app_os_window *os_window)
         static bool switch_res=true;
         if(switch_res){
           switch_res=false;
-          os_window->app_data.iResolution[0]=1920;
-          os_window->app_data.iResolution[1]=1080;
+          os_window->app_data.iResolution[0]=wayland_fullscreen_resize_size[0];
+          os_window->app_data.iResolution[1]=wayland_fullscreen_resize_size[1];
         }else{
           switch_res=true;
-          os_window->app_data.iResolution[0]=1280;
-          os_window->app_data.iResolution[1]=720;
+          os_window->app_data.iResolution[0]=resX;
+          os_window->app_data.iResolution[1]=resY;
         }
       }
 #else
@@ -474,8 +482,8 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
     }
     struct VkExtent2D init_size;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    init_size.width = resize_size[0];
-    init_size.height = resize_size[1];
+    init_size.width = wayland_resize_size[0];
+    init_size.height = wayland_resize_size[1];
 #else
     init_size.width = swapchain->surface_caps.currentExtent.width;
     init_size.height = swapchain->surface_caps.currentExtent.height;
@@ -929,8 +937,8 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
     os_window->prepared = false;
     
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    resize_size[0] = os_window->app_data.iResolution[0];
-    resize_size[1] = os_window->app_data.iResolution[1];
+    wayland_resize_size[0] = os_window->app_data.iResolution[0];
+    wayland_resize_size[1] = os_window->app_data.iResolution[1];
 #endif
 
     vk_free_pipelines(dev, &render_data->main_pipeline, 1);
@@ -1511,11 +1519,12 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
         return false;
     
 #ifdef USE_SCREENSHOT
-    if(screenshot_once){
+    if(screenshot_once||screenshot_and_close){
       screenshot_once = false;
       retval = make_screenshot(phy_dev, dev, swapchain, &essentials, image_index);
       if (!vk_error_is_success(&retval))
             return false;
+      if(screenshot_and_close){ screenshot_and_close = false; return false; }
     }
 #endif
     
@@ -1524,14 +1533,35 @@ static bool render_loop_draw(struct vk_physical_device *phy_dev, struct vk_devic
     os_window->pause_refresh = false;
     return true;
 }
+void set_init_res(struct app_os_window *os_window, bool resX_set, bool resY_set)
+{
+    if(resX_set&&(!resY_set)){
+        resY = (int)((resX*9)/16);
+    }
+    if(resY_set&&(!resX_set)){
+        resX = (int)((resY*16)/9);
+    }
+    resX = resX<2?2:resX;
+    resX = resX>16000?16000:resX;
+    resY = resY<2?2:resY;
+    resY = resY>16000?16000:resY;
+    
+    os_window->app_data.iResolution[0] = resX;
+    os_window->app_data.iResolution[1] = resY;
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    wayland_resize_size[0] = os_window->app_data.iResolution[0];
+    wayland_resize_size[1] = os_window->app_data.iResolution[1];
+#endif
+
+}
 
 void init_win_params(struct app_os_window *os_window)
 {
     os_window->app_data.iResolution[0] = 1280;
     os_window->app_data.iResolution[1] = 720;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    resize_size[0] = os_window->app_data.iResolution[0];
-    resize_size[1] = os_window->app_data.iResolution[1];
+    wayland_resize_size[0] = os_window->app_data.iResolution[0];
+    wayland_resize_size[1] = os_window->app_data.iResolution[1];
 #endif
     os_window->app_data.iFrame = 0;
     os_window->app_data.iMouse[0] = 0;
@@ -1710,6 +1740,10 @@ void print_usage(char *name)
            "\t[--debug]\n"
            "\t[--reload_shaders] will reload shaders form file on resize\n"
            "\t[--gpu <index(0/1/2/etc)>] use selected GPU to render\n"
+           "\t[--resX 1280] resolution by X - can be provided just one X/Y - will be used 16:9\n"
+           "\t[--resY 720] resolution by Y - for resolution min 2 max 16000\n"
+           "\t[--pause] pause on start after rendering one frame - iFrame will be ==0\n"
+           "\t[--screenshot_and_close] make screenshot BMP on iFrame ==0 and close\n"
            "Control: Keyboard 1-debug, 2-vsynk 60fps, Space-pause\n",
            name, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_KHR,
            VK_PRESENT_MODE_FIFO_RELAXED_KHR);
@@ -1803,15 +1837,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     {
         argv = NULL;
     }
-
-    vk_error res = VK_ERROR_NONE;
-    int retval = EXIT_FAILURE;
-
-    init_win_params(&os_window);
-    uint32_t dev_index = 0;
-    bool use_gpu_idx = false;
-    os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
-
+    
     if (argc > 1)
     {
         if (strcmp(argv[1], "--help") == 0)
@@ -1822,6 +1848,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
             return 0;
         }
     }
+
+    vk_error res = VK_ERROR_NONE;
+    int retval = EXIT_FAILURE;
+
+    init_win_params(&os_window);
+    uint32_t dev_index = 0;
+    bool use_gpu_idx = false;
+    bool resX_set = false;
+    bool resY_set = false;
+    os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
     for (int i = 1; i < argc; i++)
     {
@@ -1848,7 +1884,33 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
             os_window.reload_shaders_on_resize = true;
             continue;
         }
+        if (strcmp(argv[i], "--pause") == 0)
+        {
+            run_paused = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--screenshot_and_close") == 0)
+        {
+            screenshot_and_close = true;
+            continue;
+        }
+        if ((strcmp(argv[i], "--resX") == 0) && (i < argc - 1))
+        {
+            resX = atoi(argv[i + 1]);
+            resX_set = true;
+            i++;
+            continue;
+        }
+        if ((strcmp(argv[i], "--resY") == 0) && (i < argc - 1))
+        {
+            resY = atoi(argv[i + 1]);
+            resY_set = true;
+            i++;
+            continue;
+        }
     }
+    
+    set_init_res(&os_window, resX_set, resY_set);
 
     if (argc > 0 && argv != NULL)
     {
@@ -1932,6 +1994,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
 
 int main(int argc, char **argv)
 {
+  
+    if (argc > 1)
+    {
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            print_usage(argv[0]);
+            return 0;
+        }
+    }
+    
     vk_error res;
     int retval = EXIT_FAILURE;
     VkInstance vk;
@@ -1942,16 +2014,9 @@ int main(int argc, char **argv)
     init_win_params(&os_window);
     uint32_t dev_index = 0;
     bool use_gpu_idx = false;
+    bool resX_set = false;
+    bool resY_set = false;
     os_window.present_mode = VK_PRESENT_MODE_FIFO_KHR;
-
-    if (argc > 1)
-    {
-        if (strcmp(argv[1], "--help") == 0)
-        {
-            print_usage(argv[0]);
-            return 0;
-        }
-    }
 
     for (int i = 1; i < argc; i++)
     {
@@ -1978,7 +2043,33 @@ int main(int argc, char **argv)
             os_window.reload_shaders_on_resize = true;
             continue;
         }
+        if (strcmp(argv[i], "--pause") == 0)
+        {
+            run_paused = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--screenshot_and_close") == 0)
+        {
+            screenshot_and_close = true;
+            continue;
+        }
+        if ((strcmp(argv[i], "--resX") == 0) && (i < argc - 1))
+        {
+            resX = atoi(argv[i + 1]);
+            resX_set = true;
+            i++;
+            continue;
+        }
+        if ((strcmp(argv[i], "--resY") == 0) && (i < argc - 1))
+        {
+            resY = atoi(argv[i + 1]);
+            resY_set = true;
+            i++;
+            continue;
+        }
     }
+    
+    set_init_res(&os_window, resX_set, resY_set);
 
     srand(time(NULL));
 
