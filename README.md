@@ -24,7 +24,13 @@ Used Vulkan 1.0 and only single extension *VK_KHR_swapchain* `VK_KHR_SWAPCHAIN_E
 
 **Example shader in this download** - [shadertoy link](https://www.shadertoy.com/view/WlcBWr) shader use buffers cross-reading, feedback logic, and example for texture and keyboard support, only as an example that logic work same as on shadertoy.
 
-### Contact: [**Join discord server**](https://discord.gg/JKyqWgt)
+___
+
+### Contact with me:
+
+**Matrix-chat room `#Shadertoy:envs.net` invite link** [matrix.to](https://matrix.to/#/#Shadertoy:envs.net) *(use web UI Element if you dont have acc)*
+
+___
 
 **Apps that I made using this code:** [GLSL Auto Tetris](https://www.pouet.net/prod.php?which=85052), [GLSL Card game in the single shader](https://www.pouet.net/prod.php?which=84806), [likes (GLSL game)](https://www.pouet.net/prod.php?which=84805), [Game for Cactus Jam](https://www.shadertoy.com/view/NlXXW2)
 
