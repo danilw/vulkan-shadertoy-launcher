@@ -8,6 +8,7 @@
 
 // NO_RESIZE_BUF
 // CUSTOM_BUF_SIZE
+// DYNAMIC_and_STATIC_SIZE
 // USE_stb_image
 // OFFSCREEN_BUFFERS
 // IMAGE_TEXTURES
@@ -19,7 +20,7 @@
 // FPS_LOCK(30) hotkey function 30 FPS lock (no Vsync)
 // check_hotkeys function where hotkeys defined
 
-// Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (works in buffers)
+// Discard disabled, to make it work if needed change VK_C_CLEAR to VK_KEEP in this file (works in buffers NOT in Image)
 
 // used VK_WITHOUT_DEPTH render pass, if you need depth change to VK_WITH_DEPTH (and remember change VkClearValue clear_values adding depth and stencil clean values there)
 
@@ -27,7 +28,19 @@
 // #define NO_RESIZE_BUF
 
 // if you need custom static buffer size (iResolution unique to each buffer and will be equal to this value in buffers)
+// with this only Image shader will have "dynamic render size"
+// use together with NO_RESIZE_BUF
 // #define CUSTOM_BUF_SIZE {.width = 256, .height = 256,}
+
+// DYNAMIC_and_STATIC_SIZE buffer sizes:
+// it conflict with CUSTOM_BUF_SIZE and NO_RESIZE_BUF - do not use together
+// in define below format - size for static buffers OR .width = 0, .height = 0
+// when size is 0 - size will be dynamic
+// order in define [array] is BufA-D 
+// size of array must be equal to number of buffers OFFSCREEN_BUFFERS
+// this example for BufA,B,C is static size BufD is dynamic
+// EXPECTED atleast one is static or dynamic - if you need all static use CUSTOM_BUF_SIZE with NO_RESIZE_BUF or for all dynamic dont need to do anything
+// #define DYNAMIC_and_STATIC_SIZE {{.width = 128, .height = 128},{.width = 256, .height = 256},{.width = 64, .height = 64},{.width = 0, .height = 0}}
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)||defined(VK_USE_PLATFORM_WAYLAND_KHR)
 #include <unistd.h>
@@ -49,7 +62,7 @@ static bool screenshot_and_close = false;
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
 static int wayland_resize_size[2] = {1280, 720}; // in Wayland surface should set own size
-const int wayland_fullscreen_resize_size[2] = {1920, 1080}; // used in example resize event for walynad surface
+const int wayland_fullscreen_resize_size[2] = {1920, 1080}; // used in example resize event for wayland surface
 #endif
 
 static bool main_image_srgb = false; // srgb surface fix
@@ -70,6 +83,8 @@ static bool main_image_srgb = false; // srgb surface fix
 // numbers buffers <*.frag> files
 // number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
 // names shaders/spv/<file>.spv look files names in that folder
+// if you change this number - you need manually edit shader files adding uniforms
+// and create more copies of src/buf<X>.frag and shadertoy/buf<X>.glsl files
 #define OFFSCREEN_BUFFERS 4
 
 // number of images(>0)
@@ -79,7 +94,7 @@ static bool main_image_srgb = false; // srgb surface fix
 // linear or mipmap for textures
 #define USE_MIPMAPS true
 
-// use save screenshot functions, default hotkey Z
+// use save screenshot functions, default hotkey P
 #define USE_SCREENSHOT
 
 // keyboard is texture that send from this data
@@ -171,7 +186,11 @@ struct render_data
     struct vk_shader shaders[2 + OFFSCREEN_BUFFERS * 2];
     struct vk_graphics_buffers *main_gbuffers;
     struct vk_offscreen_buffers *buf_obuffers;
-
+#ifdef DYNAMIC_and_STATIC_SIZE
+    struct vk_offscreen_buffers *static_buf_obuffers;
+    struct vk_offscreen_buffers *dynamic_buf_obuffers;
+    bool dsz_map[OFFSCREEN_BUFFERS];
+#endif
     VkRenderPass buf_render_pass[OFFSCREEN_BUFFERS];
     struct vk_layout buf_layout[OFFSCREEN_BUFFERS];
     struct vk_pipeline buf_pipeline[OFFSCREEN_BUFFERS];
@@ -285,7 +304,7 @@ static bool key_screenshot_once = true;
 static bool screenshot_once = false;
 static void check_hotkeys(struct app_os_window *os_window)
 {
-    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70, Key_z = 90, Key_f11 = 122;
+    const int Key_Escape = 27, Key_Space = 32, Key_0 = 48, Key_1 = 49, Key_f = 70, Key_p = 80, Key_f11 = 122;
     if (keyboard_map[Key_Escape][1])
         os_window->app_data.quit = true;
     if (keyboard_map[Key_Space][1])
@@ -294,7 +313,7 @@ static void check_hotkeys(struct app_os_window *os_window)
         os_window->app_data.drawdebug = !os_window->app_data.drawdebug;
     if (keyboard_map[Key_1][1])
         os_window->fps_lock = !os_window->fps_lock;
-    if (keyboard_map[Key_z][1]) {
+    if (keyboard_map[Key_p][1]) {
         if (key_screenshot_once) { screenshot_once = true; key_screenshot_once = false; }
     } else key_screenshot_once = true;
     
@@ -499,6 +518,25 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
     if (!load_once)
     {
 #endif
+#ifdef DYNAMIC_and_STATIC_SIZE
+        static struct VkExtent2D tmp_buf_sizes[OFFSCREEN_BUFFERS] = DYNAMIC_and_STATIC_SIZE;
+        if (!load_once)
+        {
+            for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)render_data->dsz_map[i]=tmp_buf_sizes[i].width>0;
+            render_data->static_buf_obuffers = malloc(2 * (sizeof(*render_data->static_buf_obuffers)) * OFFSCREEN_BUFFERS);
+            for (uint32_t i = 0; i < 2 * OFFSCREEN_BUFFERS; i++)
+                render_data->static_buf_obuffers[i] = (struct vk_offscreen_buffers)
+                {
+                    .surface_size = (render_data->dsz_map[i/2]?tmp_buf_sizes[i/2]:init_size),
+                };
+        }
+        render_data->dynamic_buf_obuffers = malloc(2 * (sizeof(*render_data->dynamic_buf_obuffers)) * OFFSCREEN_BUFFERS);
+        for (uint32_t i = 0; i < 2 * OFFSCREEN_BUFFERS; i++)
+            render_data->dynamic_buf_obuffers[i] = (struct vk_offscreen_buffers)
+            {
+                .surface_size = init_size,
+            };
+#endif
         render_data->buf_obuffers = malloc(2 * (sizeof(*render_data->buf_obuffers)) * OFFSCREEN_BUFFERS);
         for (uint32_t i = 0; i < 2 * OFFSCREEN_BUFFERS; i++)
             render_data->buf_obuffers[i] = (struct vk_offscreen_buffers)
@@ -506,7 +544,11 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #if defined(CUSTOM_BUF_SIZE) && defined(NO_RESIZE_BUF)
                 .surface_size = (struct VkExtent2D)CUSTOM_BUF_SIZE,
 #else
-            .surface_size = init_size,
+#ifdef DYNAMIC_and_STATIC_SIZE
+                .surface_size = (render_data->dsz_map[i/2]?tmp_buf_sizes[i/2]:init_size),
+#else
+                .surface_size = init_size,
+#endif
 #endif
             };
 #ifdef NO_RESIZE_BUF
@@ -530,10 +572,21 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #endif
         for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++)
         {
+#ifdef DYNAMIC_and_STATIC_SIZE
+            if(!(render_data->dsz_map[i])||!load_once){
+                // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
+                retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                     (render_data->dsz_map[i])?(&render_data->static_buf_obuffers[i * 2]):(&render_data->dynamic_buf_obuffers[i * 2]), 2, &render_data->buf_render_pass[i],
+                                                     VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
+            }
+            render_data->buf_obuffers[i * 2]=(render_data->dsz_map[i])?(render_data->static_buf_obuffers[i * 2]):(render_data->dynamic_buf_obuffers[i * 2]);
+            render_data->buf_obuffers[i * 2 + 1]=(render_data->dsz_map[i])?(render_data->static_buf_obuffers[i * 2 + 1]):(render_data->dynamic_buf_obuffers[i * 2 + 1]);
+#else
             // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
             retval = vk_create_offscreen_buffers(phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
                                                  &render_data->buf_obuffers[i * 2], 2, &render_data->buf_render_pass[i],
                                                  VK_C_CLEAR, VK_WITHOUT_DEPTH, true);
+#endif
             if (!vk_error_is_success(&retval))
             {
                 vk_error_printf(&retval, "Could not create off-screen buffers\n");
@@ -566,6 +619,9 @@ static vk_error allocate_render_data(struct vk_physical_device *phy_dev, struct 
 #endif
         for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
         {
+#ifdef DYNAMIC_and_STATIC_SIZE
+            if(render_data->dsz_map[i]&&load_once)continue;
+#endif
             /* Layouts */
 
             struct vk_resources resources = {
@@ -768,12 +824,20 @@ static void free_render_data(struct vk_device *dev, struct vk_render_essentials 
 
     for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
     {
+#ifdef DYNAMIC_and_STATIC_SIZE
+        vk_free_offscreen_buffers(dev, (render_data->dsz_map[i])?(&render_data->static_buf_obuffers[i * 2]):(&render_data->dynamic_buf_obuffers[i * 2]), 2, render_data->buf_render_pass[i]);
+#else
         vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
+#endif
     }
     vk_free_graphics_buffers(dev, render_data->main_gbuffers, essentials->image_count, render_data->main_render_pass);
 
     free(render_data->main_gbuffers);
     free(render_data->buf_obuffers);
+#ifdef DYNAMIC_and_STATIC_SIZE
+    free(render_data->static_buf_obuffers);
+    free(render_data->dynamic_buf_obuffers);
+#endif
 }
 
 // TO DO FREE BZUF FENCE LOOP
@@ -846,6 +910,9 @@ static void render_loop_init(struct vk_physical_device *phy_dev, struct vk_devic
 #endif
         for (int i = 0; i < OFFSCREEN_BUFFERS * 2; i++)
         {
+#ifdef DYNAMIC_and_STATIC_SIZE
+            if(render_data.dsz_map[i/2]&&once)continue;
+#endif
             retval = vk_render_transition_images(dev, &essentials, &render_data.buf_obuffers[i].color, 1,
                                                  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                  VK_IMAGE_ASPECT_COLOR_BIT, "off-screen color");
@@ -946,12 +1013,32 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
     vk_free_layouts(dev, &render_data->main_layout, 1);
 
 #ifndef NO_RESIZE_BUF
-    vk_free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
+#ifdef DYNAMIC_and_STATIC_SIZE
     for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
     {
-        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
+        if(!(render_data->dsz_map[i]))vk_free_pipelines(dev, &render_data->buf_pipeline[i], 1);
     }
+#else
+    vk_free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
+#endif
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+#ifdef DYNAMIC_and_STATIC_SIZE
+        if(!(render_data->dsz_map[i])){
+            vk_free_offscreen_buffers(dev, &render_data->dynamic_buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
+        }
+#else
+        vk_free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2, render_data->buf_render_pass[i]);
+#endif
+    }
+#ifdef DYNAMIC_and_STATIC_SIZE
+    for (int i = 0; i < OFFSCREEN_BUFFERS; i++)
+    {
+        if(!(render_data->dsz_map[i]))vk_free_layouts(dev, &render_data->buf_layout[i], 1);
+    }
+#else
     vk_free_layouts(dev, render_data->buf_layout, OFFSCREEN_BUFFERS);
+#endif
 #endif
 
     if (os_window->reload_shaders_on_resize)
@@ -962,6 +1049,9 @@ static bool on_window_resize(struct vk_physical_device *phy_dev, struct vk_devic
     free(render_data->main_gbuffers);
 
 #ifndef NO_RESIZE_BUF
+#ifdef DYNAMIC_and_STATIC_SIZE
+    free(render_data->dynamic_buf_obuffers);
+#endif
     free(render_data->buf_obuffers);
 #endif
 
@@ -1080,6 +1170,13 @@ static bool render_loop_buf(struct vk_physical_device *phy_dev, struct vk_device
 #ifdef NO_RESIZE_BUF
     update_push_constants_local_size(render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.width,
                                      render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.height);
+#endif
+#ifdef DYNAMIC_and_STATIC_SIZE
+    if(render_data->dsz_map[buffer_index])
+    {
+        update_push_constants_local_size(render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.width,
+                                     render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.height);
+    }
 #endif
     vkResetCommandBuffer(cmd_buffer, 0);
     VkCommandBufferBeginInfo begin_info = {
