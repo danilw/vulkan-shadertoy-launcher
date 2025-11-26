@@ -42,6 +42,7 @@ ___
  - fixed new validation error [#6](https://github.com/danilw/vulkan-shadertoy-launcher/issues/6)
  - I think this should finally fix those random crashes on resize on AMD and Intel GPUs that were not catched by validation layers in the past
  - still Vulkan 1.0 no extensions required - should work everywhere
+ - *still only C - Github shows 36.5% C++ pointing to `launcher/stb_image.h` - when it is C include file - github wrongly count it as C++*
 ___
 
 # How to use:
