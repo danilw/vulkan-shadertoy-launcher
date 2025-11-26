@@ -35,6 +35,15 @@ ___
 **Apps that I made using this code:** [GLSL Auto Tetris](https://www.pouet.net/prod.php?which=85052), [GLSL Card game in the single shader](https://www.pouet.net/prod.php?which=84806), [likes (GLSL game)](https://www.pouet.net/prod.php?which=84805), [Game for Cactus Jam](https://www.shadertoy.com/view/NlXXW2)
 
 ___
+
+### Update 2025:
+ - some [minor rework](https://github.com/danilw/vulkan-shadertoy-launcher/commit/c350e9cb8a55b6c72d7db1fd20d197ad8d3fbf1b) to add `DYNAMIC_and_STATIC_SIZE` - dynamic and static framebuffers support
+ - read `USEFUL defines` section in [launcher/main.c](https://github.com/danilw/vulkan-shadertoy-launcher/blob/master/launcher/main.c#L7)
+ - fixed new validation error [#6](https://github.com/danilw/vulkan-shadertoy-launcher/issues/6)
+ - I think this should finally fix those random crashes on resize on AMD and Intel GPUs that were not catched by validation layers in the past
+ - still Vulkan 1.0 no extensions required - should work everywhere
+___
+
 # How to use:
 
 1. **Download** *Bin build* or build the project. (notice *empty_template_shadertoy.zip* in Release downloads)
