@@ -37,8 +37,6 @@ int vk_render_get_essentials(struct vk_render_essentials *essentials, struct vk_
     
     if(essentials->sem_image_count>0)
     {
-        //sem_last_image_index=sem_image_count-1;
-        //sem_old_image_index=sem_image_count-1;
         essentials->sem_post_acquire = malloc(essentials->sem_image_count * sizeof *essentials->sem_post_acquire);
         essentials->sem_pre_submit = malloc(essentials->sem_image_count * sizeof *essentials->sem_pre_submit);
         for (int i = 0; i<essentials->sem_image_count; i++){
