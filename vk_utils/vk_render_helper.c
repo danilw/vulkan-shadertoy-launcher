@@ -32,19 +32,38 @@ int vk_render_get_essentials(struct vk_render_essentials *essentials, struct vk_
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
 
-    res = vkCreateSemaphore(dev->device, &sem_info, NULL, &essentials->sem_post_acquire);
-    vk_error_set_vkresult(&retval, res);
-    if (res)
+    essentials->sem_image_count = essentials->image_count;
+    essentials->sem_image_index=(essentials->sem_image_index+1)%essentials->sem_image_count;
+    
+    if(essentials->sem_image_count>0)
     {
-        vk_error_printf(&retval, "Failed to create post-acquire semaphore\n");
-        return -1;
+        //sem_last_image_index=sem_image_count-1;
+        //sem_old_image_index=sem_image_count-1;
+        essentials->sem_post_acquire = malloc(essentials->sem_image_count * sizeof *essentials->sem_post_acquire);
+        essentials->sem_pre_submit = malloc(essentials->sem_image_count * sizeof *essentials->sem_pre_submit);
+        for (int i = 0; i<essentials->sem_image_count; i++){
+            essentials->sem_post_acquire[i]=VK_NULL_HANDLE; essentials->sem_pre_submit[i]=VK_NULL_HANDLE;
+        }
+        for (int i = 0; i<essentials->sem_image_count; i++){
+            res = vkCreateSemaphore(dev->device, &sem_info, NULL, &essentials->sem_post_acquire[i]);
+            vk_error_set_vkresult(&retval, res);
+            if (res)
+            {
+                vk_error_printf(&retval, "Failed to create post-acquire semaphore\n");
+                return -1;
+            }
+            res = vkCreateSemaphore(dev->device, &sem_info, NULL, &essentials->sem_pre_submit[i]);
+            vk_error_set_vkresult(&retval, res);
+            if (res)
+            {
+                vk_error_printf(&retval, "Failed to create pre-submit semaphore\n");
+                return -1;
+            }
+        }
     }
-
-    res = vkCreateSemaphore(dev->device, &sem_info, NULL, &essentials->sem_pre_submit);
-    vk_error_set_vkresult(&retval, res);
-    if (res)
+    else
     {
-        vk_error_printf(&retval, "Failed to create pre-submit semaphore\n");
+        printf("vk_render_get_essentials essentials->image_count==0 \n");
         return -1;
     }
 
@@ -69,8 +88,18 @@ void vk_render_cleanup_essentials(struct vk_render_essentials *essentials, struc
 {
     vkDeviceWaitIdle(dev->device);
 
-    vkDestroySemaphore(dev->device, essentials->sem_post_acquire, NULL);
-    vkDestroySemaphore(dev->device, essentials->sem_pre_submit, NULL);
+    if(essentials->sem_image_count>0)
+    {
+        for (int i = 0; i<essentials->sem_image_count; i++){
+          if (essentials->sem_post_acquire[i] != VK_NULL_HANDLE)
+              vkDestroySemaphore(dev->device, essentials->sem_post_acquire[i], NULL);
+          if (essentials->sem_pre_submit[i] != VK_NULL_HANDLE)
+              vkDestroySemaphore(dev->device, essentials->sem_pre_submit[i], NULL);
+        }
+        essentials->sem_image_count=0;
+        free(essentials->sem_post_acquire);
+        free(essentials->sem_pre_submit);
+    }
     vkDestroyFence(dev->device, essentials->exec_fence, NULL);
     free(essentials->images);
 }
@@ -81,7 +110,7 @@ VkResult vk_render_start(struct vk_render_essentials *essentials, struct vk_devi
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    res = vkAcquireNextImageKHR(dev->device, swapchain->swapchain, 1000000000, essentials->sem_post_acquire, NULL, image_index);
+    res = vkAcquireNextImageKHR(dev->device, swapchain->swapchain, 1000000000, essentials->sem_post_acquire[essentials->sem_image_index], NULL, image_index);
     vk_error_set_vkresult(&retval, res);
     if (res == VK_TIMEOUT)
     {
@@ -664,8 +693,8 @@ int vk_render_finish(struct vk_render_essentials *essentials, struct vk_device *
         return res;
     }
 
-    VkSemaphore wait_sems[2] = {essentials->sem_post_acquire, wait_sem};
-    VkSemaphore signal_sems[2] = {essentials->sem_pre_submit, signal_sem};
+    VkSemaphore wait_sems[2] = {essentials->sem_post_acquire[essentials->sem_image_index], wait_sem};
+    VkSemaphore signal_sems[2] = {essentials->sem_pre_submit[image_index], signal_sem};
     VkPipelineStageFlags wait_sem_stages[2] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -682,11 +711,12 @@ int vk_render_finish(struct vk_render_essentials *essentials, struct vk_device *
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &essentials->sem_pre_submit,
+        .pWaitSemaphores = &essentials->sem_pre_submit[image_index],
         .swapchainCount = 1,
         .pSwapchains = &swapchain->swapchain,
         .pImageIndices = &image_index,
     };
+    essentials->sem_image_index=(essentials->sem_image_index+1)%essentials->sem_image_count;
     res = vkQueuePresentKHR(essentials->present_queue, &present_info);
     
     if (res == VK_ERROR_OUT_OF_DATE_KHR) {

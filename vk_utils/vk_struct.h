@@ -109,8 +109,10 @@ struct vk_render_essentials
     VkQueue present_queue;
     VkCommandBuffer cmd_buffer;
 
-    VkSemaphore sem_post_acquire;
-    VkSemaphore sem_pre_submit;
+    VkSemaphore *sem_post_acquire;
+    VkSemaphore *sem_pre_submit;
+    uint32_t sem_image_count;
+    uint32_t sem_image_index;
 
     VkFence exec_fence;
     bool first_render;
