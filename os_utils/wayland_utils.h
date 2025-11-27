@@ -116,7 +116,7 @@ static void pointerButton(struct wl_pointer *pointer, uint32_t serial, uint32_t 
     os_window->app_data.iMouse_click[0] = state;
     if(state){
       os_window->app_data.iMouse_lclick[0] = os_window->app_data.iMouse[0];
-      os_window->app_data.iMouse_lclick[1] = os_window->app_data.iResolution[1] - os_window->app_data.iMouse[1];
+      os_window->app_data.iMouse_lclick[1] = os_window->app_data.iMouse[1];
     }else{
       os_window->app_data.iMouse_lclick[0] = -os_window->app_data.iMouse_lclick[0];
       os_window->app_data.iMouse_lclick[1] = -os_window->app_data.iMouse_lclick[1];
@@ -128,7 +128,7 @@ static void pointerButton(struct wl_pointer *pointer, uint32_t serial, uint32_t 
 		os_window->app_data.iMouse_click[1] = state;
     if(state){
       os_window->app_data.iMouse_rclick[0] = os_window->app_data.iMouse[0];
-      os_window->app_data.iMouse_rclick[1] = os_window->app_data.iResolution[1] - os_window->app_data.iMouse[1];
+      os_window->app_data.iMouse_rclick[1] = os_window->app_data.iMouse[1];
     }else{
       os_window->app_data.iMouse_rclick[0] = -os_window->app_data.iMouse_rclick[0];
       os_window->app_data.iMouse_rclick[1] = -os_window->app_data.iMouse_rclick[1];
