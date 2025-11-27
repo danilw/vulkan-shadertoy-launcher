@@ -110,7 +110,9 @@ static bool last_iMousel_clicked[2] = {false, false};
 #define iKeyboard 1
 
 // to build-in compressed shaders into bin(exe) file
-// used OFFSCREEN_BUFFERS size, names of .hex files should be set manually(and edit yariv_shaders[]), this example using 4 buffers same as on shadertoy
+// used OFFSCREEN_BUFFERS size, names of .hex files should be set manually(and edit yariv_shaders[] and yariv_shaders_size[]), this example using 4 buffers same as on shadertoy
+// if you need more buffers - test on normal build then edit these and build yariv shaders with build_scripts/yariv_shaders/build_shaders_yariv.sh - edit this script to build number of shaders
+// look build_yariv.sh in build_scripts/platform folders
 //#define YARIV_SHADER
 
 #ifdef YARIV_SHADER
@@ -2236,3 +2238,4 @@ int main(int argc, char **argv)
 }
 
 #endif
+
