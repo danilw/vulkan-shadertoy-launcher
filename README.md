@@ -34,6 +34,8 @@ ___
 
 **Apps that I made using this code:** [GLSL Auto Tetris](https://www.pouet.net/prod.php?which=85052), [GLSL Card game in the single shader](https://www.pouet.net/prod.php?which=84806), [likes (GLSL game)](https://www.pouet.net/prod.php?which=84805), [Game for Cactus Jam](https://www.shadertoy.com/view/NlXXW2)
 
+New - [Speed of light in Ring (demo) 200KB exe](https://danilw.itch.io/speed-of-light-in-ring) - lots of shaders and TAA and complex - also made with this.
+
 ___
 
 ### Update 2025:
