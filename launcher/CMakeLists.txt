@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.11)
 
 project("shadertoy_launcher")
 
@@ -76,3 +76,4 @@ elseif(("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") AND ("${CMAKE_SYSTEM}" MATCHES 
 else()
   message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
 endif()
+
